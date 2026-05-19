@@ -1,0 +1,172 @@
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using NexusAs.Api.Responses;
+using NexusAs.Application.DTOs.Partners;
+using NexusAs.Application.Interfaces;
+using System.Security.Claims;
+
+namespace NexusAs.Api.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    [Authorize]
+    public class PartnerController : ControllerBase
+    {
+        private readonly IPartnerService _partnerService;
+
+        public PartnerController(IPartnerService partnerService)
+        {
+            _partnerService = partnerService;
+        }
+
+        // ── ADMIN endpoints ──────────────────────────────
+
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAll()
+        {
+            var partners = await _partnerService.GetAllPartnersAsync();
+            return Ok(ApiResponse<IEnumerable<PartnerConfigDto>>.Success(partners));
+        }
+
+        [HttpGet("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var partner = await _partnerService.GetPartnerByIdAsync(id);
+            return Ok(ApiResponse<PartnerConfigDto>.Success(partner!));
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Create([FromBody] CreatePartnerConfigDto dto)
+        {
+            var partner = await _partnerService.CreatePartnerConfigAsync(dto);
+            return Ok(ApiResponse<PartnerConfigDto>.Success(
+                partner, "Configuración de socia creada exitosamente."));
+        }
+
+        [HttpPatch("{id}/commission")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateCommission(
+            int id, [FromQuery] decimal commission)
+        {
+            var partner = await _partnerService.UpdateCommissionAsync(id, commission);
+            return Ok(ApiResponse<PartnerConfigDto>.Success(
+                partner, "Comisión actualizada exitosamente."));
+        }
+
+        [HttpPost("{id}/product-prices")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> SetProductPrice(
+            int id, [FromBody] SetPartnerProductPriceDto dto)
+        {
+            var price = await _partnerService.SetProductPriceAsync(id, dto);
+            return Ok(ApiResponse<PartnerProductPriceDto>.Success(
+                price, "Precio especial configurado exitosamente."));
+        }
+
+        [HttpGet("{id}/product-prices")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetProductPrices(int id)
+        {
+            var prices = await _partnerService.GetProductPricesAsync(id);
+            return Ok(ApiResponse<IEnumerable<PartnerProductPriceDto>>.Success(prices));
+        }
+
+        [HttpGet("{id}/summary")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetSummaryAdmin(int id)
+        {
+            var summary = await _partnerService.GetPartnerSummaryAsync(id);
+            return Ok(ApiResponse<PartnerSummaryDto>.Success(summary));
+        }
+
+        [HttpGet("{id}/sales")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetSalesAdmin(
+            int id,
+            [FromQuery] DateTime? from = null,
+            [FromQuery] DateTime? to = null)
+        {
+            var sales = await _partnerService.GetPartnerSalesAsync(id, from, to);
+            return Ok(ApiResponse<IEnumerable<PartnerSaleDto>>.Success(sales));
+        }
+
+        [HttpPost("{id}/liquidations")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> RegisterLiquidation(
+            int id, [FromBody] RegisterPartnerLiquidationDto dto)
+        {
+            var liquidation = await _partnerService.RegisterLiquidationAsync(id, dto);
+            return Ok(ApiResponse<PartnerLiquidationDto>.Success(
+                liquidation, "Liquidación registrada exitosamente."));
+        }
+
+        [HttpGet("{id}/liquidations")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetLiquidations(int id)
+        {
+            var liquidations = await _partnerService.GetLiquidationsAsync(id);
+            return Ok(ApiResponse<IEnumerable<PartnerLiquidationDto>>.Success(liquidations));
+        }
+
+        [HttpGet("{id}/statement/pdf")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetStatementAdmin(
+            int id,
+            [FromQuery] DateTime from,
+            [FromQuery] DateTime to)
+        {
+            var pdf = await _partnerService.GeneratePartnerStatementAsync(id, from, to);
+            return File(pdf, "application/pdf", $"EstadoCuenta_Socia_{id}.pdf");
+        }
+
+        // ── PARTNER endpoints (la socia ve los suyos) ───
+
+        [HttpGet("my/summary")]
+        [Authorize(Roles = "Partner")]
+        public async Task<IActionResult> GetMySummary()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var config = await GetPartnerConfigByUserId(userId);
+            var summary = await _partnerService.GetPartnerSummaryAsync(config.Id);
+            return Ok(ApiResponse<PartnerSummaryDto>.Success(summary));
+        }
+
+        [HttpGet("my/sales")]
+        [Authorize(Roles = "Partner")]
+        public async Task<IActionResult> GetMySales(
+            [FromQuery] DateTime? from = null,
+            [FromQuery] DateTime? to = null)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var config = await GetPartnerConfigByUserId(userId);
+            var sales = await _partnerService.GetPartnerSalesAsync(config.Id, from, to);
+            return Ok(ApiResponse<IEnumerable<PartnerSaleDto>>.Success(sales));
+        }
+
+        [HttpGet("my/statement/pdf")]
+        [Authorize(Roles = "Partner")]
+        public async Task<IActionResult> GetMyStatement(
+            [FromQuery] DateTime from,
+            [FromQuery] DateTime to)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var config = await GetPartnerConfigByUserId(userId);
+            var pdf = await _partnerService
+                .GeneratePartnerStatementAsync(config.Id, from, to);
+            return File(pdf, "application/pdf", "MiEstadoCuenta.pdf");
+        }
+
+        // ── Helper privado ───────────────────────────────
+        private async Task<PartnerConfigDto> GetPartnerConfigByUserId(int userId)
+        {
+            var all = await _partnerService.GetAllPartnersAsync();
+            var config = all.FirstOrDefault(p => p.UserId == userId && p.IsActive);
+            if (config == null)
+                throw new Exception("No se encontró configuración de socia para este usuario.");
+            return config;
+        }
+    }
+}
