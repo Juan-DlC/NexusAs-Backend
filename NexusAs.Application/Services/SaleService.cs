@@ -172,7 +172,7 @@ namespace NexusAs.Application.Services
                         // Calcular precio de socia = costo + (gananciaAS * commissionPercent/100)
                         var gainAS = product.SalePrice - product.Cost;
                         var partnerPrice = product.Cost + (gainAS * commissionPercent / 100);
-                        var partnerEarning = detailDto.UnitPrice - partnerPrice;
+                        var partnerEarning = Math.Max(0, detailDto.UnitPrice - partnerPrice);
                         var asEarning = partnerPrice - product.Cost;
 
                         var partnerSale = new PartnerSale
