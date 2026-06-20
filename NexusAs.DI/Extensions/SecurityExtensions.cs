@@ -40,6 +40,18 @@ namespace NexusAs.DI.Extensions
                 };
             });
 
+            services.AddCors(options =>
+            {
+                options.AddPolicy("NexusAsPolicy", policy =>
+                {
+                    policy.WithOrigins(
+                            "http://localhost:5173",
+                            "https://localhost:5173")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            });
+
             return services;
         }
     }

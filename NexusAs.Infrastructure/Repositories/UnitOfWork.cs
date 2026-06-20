@@ -1,6 +1,7 @@
 ﻿using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Entities;
 using NexusAs.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace NexusAs.Infrastructure.Repositories
 {
@@ -12,7 +13,7 @@ namespace NexusAs.Infrastructure.Repositories
         private IRepository<Product>? _products;
         private IRepository<Customer>? _customers;
         private IRepository<User>? _users;
-        private IRepository<Sale>? _sales;
+        private ISaleRepository? _sales;
         private IRepository<SaleDetail>? _saleDetails;
         private IRepository<StockMovement>? _stockMovements;
         private ICreditRepository? _credits;
@@ -34,8 +35,8 @@ namespace NexusAs.Infrastructure.Repositories
             _customers ??= new BaseRepository<Customer>(_context);
         public IRepository<User> Users =>
             _users ??= new BaseRepository<User>(_context);
-        public IRepository<Sale> Sales =>
-            _sales ??= new BaseRepository<Sale>(_context);
+        public ISaleRepository Sales =>
+            _sales ??= new SaleRepository(_context);
         public IRepository<SaleDetail> SaleDetails =>
             _saleDetails ??= new BaseRepository<SaleDetail>(_context);
         public IRepository<StockMovement> StockMovements =>
@@ -60,5 +61,6 @@ namespace NexusAs.Infrastructure.Repositories
         {
             _context.Dispose();
         }
+
     }
 }

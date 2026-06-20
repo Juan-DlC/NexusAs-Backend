@@ -22,18 +22,13 @@ namespace NexusAs.Application.Services
             int userId, string userRole,
             DateTime? from = null, DateTime? to = null)
         {
-            var sales = await _unitOfWork.Sales.FindAsync(s =>
-                s.IsActive &&
-                (userRole == "Admin" || s.UserId == userId) &&
-                (from == null || s.Date >= from) &&
-                (to == null || s.Date <= to));
-
+            var sales = await _unitOfWork.Sales.GetSalesWithDetailsAsync(userId, userRole, from, to);
             return _mapper.Map<IEnumerable<SaleDto>>(sales);
         }
 
         public async Task<SaleDto?> GetByIdAsync(int id)
         {
-            var sale = await _unitOfWork.Sales.GetByIdAsync(id);
+            var sale = await _unitOfWork.Sales.GetSaleByIdWithDetailsAsync(id);
             if (sale == null)
                 throw new NotFoundException(nameof(Sale), id);
             return _mapper.Map<SaleDto>(sale);
