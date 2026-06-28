@@ -19,22 +19,15 @@ namespace NexusAs.Application.Services
         }
 
         public async Task<PagedResponseDto<ProductDto>> GetAllAsync(
-            int pageNumber, int pageSize, string? search = null)
+            int pageNumber, int pageSize, string? search = null,
+            int? categoryId = null, bool? isPartnership = null)
         {
-            var products = await _unitOfWork.Products.FindAsync(p =>
-                p.IsActive &&
-                (search == null ||
-                 p.Name.Contains(search) ||
-                 p.Code.Contains(search)));
-
-            var totalRecords = products.Count();
-            var paged = products
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize);
+            var (products, totalRecords) = await _unitOfWork.Products.GetAllPagedAsync(
+                search, categoryId, isPartnership, pageNumber, pageSize);
 
             return new PagedResponseDto<ProductDto>
             {
-                Data = _mapper.Map<IEnumerable<ProductDto>>(paged),
+                Data = _mapper.Map<IEnumerable<ProductDto>>(products),
                 TotalRecords = totalRecords,
                 PageNumber = pageNumber,
                 PageSize = pageSize

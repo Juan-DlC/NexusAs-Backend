@@ -1,6 +1,7 @@
 ﻿using ClosedXML.Excel;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
+using NexusAs.Application.DTOs.Partners;
 using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Enums;
 using NexusAs.Infrastructure.Data;
@@ -30,7 +31,7 @@ namespace NexusAs.Infrastructure.Services
         {
             _unitOfWork = unitOfWork;
             _context = context;
-            _logoPath = Path.Combine(env.WebRootPath, "images", "Logo.png");
+            _logoPath = Path.Combine(env.WebRootPath, "images", "Logo_4K.png");
         }
 
         public async Task<byte[]> GenerateSalesReportPdfAsync(DateTime from, DateTime to)
@@ -364,6 +365,8 @@ namespace NexusAs.Infrastructure.Services
                 .Include(s => s.SaleDetails)
                     .ThenInclude(sd => sd.Product)
                 .Include(s => s.Credit)
+                .Include(s => s.Credit)
+                    .ThenInclude(c => c!.Installments)
                 .FirstOrDefaultAsync(s => s.Id == saleId);
 
             if (sale == null)
@@ -517,9 +520,8 @@ namespace NexusAs.Infrastructure.Services
                         {
                             col.Item().PaddingTop(10)
                                 .Border(1).BorderColor(ColorAcento)
-                                .Background(ColorFondoSuave)
                                 .Padding(8).Column(creditCol =>
-                                {
+        {
                                     creditCol.Item()
                                         .Text("Estado del Crédito")
                                         .Bold().FontSize(11).FontColor(ColorAcento);
@@ -555,11 +557,53 @@ namespace NexusAs.Infrastructure.Services
                                             sale.Credit.Status == CreditStatus.Partial
                                                 ? "Pago parcial" : "Pendiente de pago");
                                     });
+
+                                    if (sale.Credit.NumberOfInstallments > 1)
+                                    {
+                                        creditCol.Item().PaddingTop(8)
+                                            .Text($"Plan de pago — {sale.Credit.NumberOfInstallments} cuotas")
+                                            .Bold().FontSize(9).FontColor(ColorPrincipal);
+
+                                        creditCol.Item().PaddingTop(4).Table(it =>
+                                        {
+                                            it.ColumnsDefinition(c =>
+                                            {
+                                                c.RelativeColumn(1);
+                                                c.RelativeColumn(2);
+                                                c.RelativeColumn(2);
+                                            });
+
+                                            it.Header(header =>
+                                            {
+                                                foreach (var title in new[] { "Cuota", "Valor", "Estado" })
+                                                {
+                                                    header.Cell().Background(ColorPrincipal)
+                                                        .Padding(3).Text(title)
+                                                        .FontColor(Colors.White).Bold().FontSize(8);
+                                                }
+                                            });
+
+                                            var installments = sale.Credit.Installments
+                                                .OrderBy(i => i.Number).ToList();
+                                            foreach (var inst in installments)
+                                            {
+                                                var bg = installments.IndexOf(inst) % 2 == 0
+                                                    ? "#FFFFFF" : ColorFondoSuave;
+                                                it.Cell().Background(bg).Padding(3)
+                                                    .Text($"#{inst.Number}").FontSize(8);
+                                                it.Cell().Background(bg).Padding(3)
+                                                    .Text($"${inst.Amount:N0}").FontSize(8);
+                                                it.Cell().Background(bg).Padding(3)
+                                                    .Text(inst.IsPaid ? "Pagada" : "Pendiente")
+                                                    .FontSize(8)
+                                                    .FontColor(inst.IsPaid ? ColorExito : ColorAlerta);
+                                            }
+                                        });
+                                    }
                                 });
                         }
 
                         col.Item().PaddingTop(10)
-                            .Background(ColorFondoSuave)
                             .Border(1).BorderColor(ColorAcento)
                             .Padding(6).Column(noteCol =>
                             {
@@ -796,7 +840,6 @@ namespace NexusAs.Infrastructure.Services
 
                         // Nota
                         col.Item().PaddingTop(12)
-                            .Background(ColorFondoSuave)
                             .Border(1).BorderColor(ColorAcento)
                             .Padding(6).Column(noteCol =>
                             {
@@ -821,6 +864,55 @@ namespace NexusAs.Infrastructure.Services
             });
 
             return document.GeneratePdf();
+        }
+
+        public async Task<AllianceReportDto> GetAllianceReportAsync(DateTime from, DateTime to)
+        {
+            // Stock actual de productos de alianza
+            var stock = await _context.Products
+                .Where(p => p.IsActive && p.IsPartnership)
+                .Select(p => new AllianceStockItemDto
+                {
+                    ProductName = p.Name,
+                    Code = p.Code,
+                    CurrentStock = p.Stock
+                })
+                .ToListAsync();
+
+            // Ventas de productos de alianza en el período (todas, sin importar el vendedor)
+            var saleDetails = await _context.SaleDetails
+                .Include(sd => sd.Product)
+                .Include(sd => sd.Sale)
+                    .ThenInclude(s => s!.User)
+                .Where(sd => sd.Product!.IsPartnership &&
+                    sd.Sale!.Date >= from && sd.Sale.Date <= to && sd.Sale.IsActive)
+                .ToListAsync();
+
+            // IDs de SaleDetail que corresponden a ventas hechas por una socia
+            var partnerSaleIds = await _context.PartnerSales
+                .Where(ps => ps.IsPartnership && ps.Date >= from && ps.Date <= to)
+                .Select(ps => ps.SaleId)
+                .ToListAsync();
+
+            var sold = saleDetails.Select(sd => new AllianceSoldItemDto
+            {
+                Date = sd.Sale!.Date,
+                SaleNumber = sd.Sale.SaleNumber,
+                ProductName = sd.Product!.Name,
+                Quantity = sd.Quantity,
+                UnitPrice = sd.UnitPrice,
+                Total = sd.Subtotal,
+                SellerName = sd.Sale.User?.FullName ?? "",
+                SoldByPartner = partnerSaleIds.Contains(sd.SaleId)
+            }).OrderByDescending(s => s.Date).ToList();
+
+            return new AllianceReportDto
+            {
+                Stock = stock,
+                Sold = sold,
+                TotalSoldAmount = sold.Sum(s => s.Total),
+                TotalSoldUnits = sold.Sum(s => s.Quantity)
+            };
         }
     }
 }

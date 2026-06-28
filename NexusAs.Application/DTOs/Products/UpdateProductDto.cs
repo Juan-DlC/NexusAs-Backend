@@ -17,5 +17,6 @@ namespace NexusAs.Application.DTOs.Products
         public int MinStock { get; set; }
         public string? ImagePath { get; set; }
         public int CategoryId { get; set; }
+        public bool IsPartnership { get; set; }
     }
 }

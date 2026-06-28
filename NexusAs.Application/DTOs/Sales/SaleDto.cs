@@ -15,6 +15,7 @@ namespace NexusAs.Application.DTOs.Sales
         public string? CustomerName { get; set; }
         public int? CustomerId { get; set; }
         public string SellerName { get; set; } = string.Empty;
+        public CreditInfoDto? CreditInfo { get; set; }
         public IEnumerable<SaleDetailDto> Details { get; set; } = new List<SaleDetailDto>();
     }
 }

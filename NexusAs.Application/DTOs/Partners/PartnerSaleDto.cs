@@ -10,6 +10,7 @@
         public decimal SalePrice { get; set; }
         public decimal CommissionPercent { get; set; }
         public decimal PartnerEarning { get; set; }
+        public bool IsPartnership { get; set; }
         public decimal AsEarning { get; set; }
         public DateTime Date { get; set; }
         public string SaleNumber { get; set; } = string.Empty;

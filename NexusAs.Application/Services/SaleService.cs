@@ -1,39 +1,64 @@
 ﻿using AutoMapper;
+using NexusAs.Application.DTOs.Common;
 using NexusAs.Application.DTOs.Sales;
 using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Entities;
 using NexusAs.Domain.Enums;
 using NexusAs.Domain.Exceptions;
-
 namespace NexusAs.Application.Services
 {
     public class SaleService : ISaleService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
-
         public SaleService(IUnitOfWork unitOfWork, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
         }
-
-        public async Task<IEnumerable<SaleDto>> GetAllAsync(
+        public async Task<PagedResponseDto<SaleDto>> GetAllAsync(
             int userId, string userRole,
-            DateTime? from = null, DateTime? to = null)
+            DateTime? from = null, DateTime? to = null,
+            string? search = null, int pageNumber = 1, int pageSize = 10)
         {
-            var sales = await _unitOfWork.Sales.GetSalesWithDetailsAsync(userId, userRole, from, to);
-            return _mapper.Map<IEnumerable<SaleDto>>(sales);
+            var (sales, totalRecords) = await _unitOfWork.Sales.GetSalesWithDetailsAsync(
+                userId, userRole, from, to, search, pageNumber, pageSize);
+            var dtos = _mapper.Map<IEnumerable<SaleDto>>(sales);
+            return new PagedResponseDto<SaleDto>
+            {
+                Data = dtos,
+                TotalRecords = totalRecords,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
-
         public async Task<SaleDto?> GetByIdAsync(int id)
         {
             var sale = await _unitOfWork.Sales.GetSaleByIdWithDetailsAsync(id);
             if (sale == null)
                 throw new NotFoundException(nameof(Sale), id);
-            return _mapper.Map<SaleDto>(sale);
+            var dto = _mapper.Map<SaleDto>(sale);
+            if (sale.Credit != null)
+            {
+                dto.CreditInfo = new CreditInfoDto
+                {
+                    TotalAmount = sale.Credit.TotalAmount,
+                    PaidAmount = sale.Credit.PaidAmount,
+                    PendingAmount = sale.Credit.PendingAmount,
+                    Status = sale.Credit.Status.ToString(),
+                    NumberOfInstallments = sale.Credit.NumberOfInstallments,
+                    Installments = sale.Credit.Installments
+                        .OrderBy(i => i.Number)
+                        .Select(i => new InstallmentInfoDto
+                        {
+                            Number = i.Number,
+                            Amount = i.Amount,
+                            IsPaid = i.IsPaid
+                        }).ToList()
+                };
+            }
+            return dto;
         }
-
         public async Task<SaleDto> CreateAsync(CreateSaleDto dto, int userId)
         {
             //Validar stock de todos los productos antes de crear la venta
@@ -47,20 +72,16 @@ namespace NexusAs.Application.Services
                         $"Stock insuficiente para '{product.Name}'. " +
                         $"Disponible: {product.Stock}, Solicitado: {detail.Quantity}.");
             }
-
             //Generar número de factura
             var salesCount = (await _unitOfWork.Sales.GetAllAsync()).Count();
             var saleNumber = $"FAC-{(salesCount + 1):D4}";
-
             //Calcular totales
             var subtotal = dto.Details.Sum(d => d.Quantity * d.UnitPrice);
             var total = subtotal - dto.Discount;
-
             //Crear la venta
             var paymentMethod = dto.PaymentMethod == "Cash"
                 ? PaymentMethod.Cash
                 : PaymentMethod.Credit;
-
             var sale = new Sale
             {
                 SaleNumber = saleNumber,
@@ -73,15 +94,12 @@ namespace NexusAs.Application.Services
                 CustomerId = dto.CustomerId,
                 UserId = userId
             };
-
             await _unitOfWork.Sales.AddAsync(sale);
             await _unitOfWork.SaveChangesAsync();
-
             //Crear detalles, descontar stock y registrar movimientos
             foreach (var detailDto in dto.Details)
             {
                 var product = await _unitOfWork.Products.GetByIdAsync(detailDto.ProductId);
-
                 //Crear detalle de venta
                 var saleDetail = new SaleDetail
                 {
@@ -92,7 +110,6 @@ namespace NexusAs.Application.Services
                     Subtotal = detailDto.Quantity * detailDto.UnitPrice
                 };
                 await _unitOfWork.SaleDetails.AddAsync(saleDetail);
-
                 // Registrar movimiento de stock
                 var stockBefore = product!.Stock;
                 var movement = new StockMovement
@@ -108,19 +125,19 @@ namespace NexusAs.Application.Services
                     UserId = userId
                 };
                 await _unitOfWork.StockMovements.AddAsync(movement);
-
                 // Descontar stock
                 product.Stock -= detailDto.Quantity;
                 _unitOfWork.Products.Update(product);
             }
-
             //Si es crédito, crear registro de crédito
             if (paymentMethod == PaymentMethod.Credit)
             {
                 if (dto.CustomerId == null)
                     throw new BusinessException(
                         "Las ventas a crédito requieren un cliente registrado.");
-
+                var numberOfInstallments = dto.NumberOfInstallments ?? 1;
+                if (numberOfInstallments < 1)
+                    numberOfInstallments = 1;
                 var credit = new Credit
                 {
                     SaleId = sale.Id,
@@ -128,48 +145,55 @@ namespace NexusAs.Application.Services
                     TotalAmount = total,
                     PaidAmount = 0,
                     PendingAmount = total,
-                    Status = CreditStatus.Pending
+                    Status = CreditStatus.Pending,
+                    NumberOfInstallments = numberOfInstallments
                 };
                 await _unitOfWork.Credits.AddAsync(credit);
+                await _unitOfWork.SaveChangesAsync();
+                // Generar las cuotas automáticamente
+                var installmentAmount = Math.Round(total / numberOfInstallments, 2);
+                for (int i = 1; i <= numberOfInstallments; i++)
+                {
+                    var installment = new CreditInstallment
+                    {
+                        CreditId = credit.Id,
+                        Number = i,
+                        Amount = installmentAmount,
+                        IsPaid = false
+                    };
+                    await _unitOfWork.CreditInstallments.AddAsync(installment);
+                }
             }
-
-            // 7. Si el vendedor es Partner, registrar ganancias
+            // Si el vendedor es Partner, registrar ganancias
             var seller = await _unitOfWork.Users.GetByIdAsync(userId);
             if (seller?.Role == UserRole.Partner)
             {
                 var partnerConfig = (await _unitOfWork.PartnerConfigs
                     .FindAsync(pc => pc.UserId == userId && pc.IsActive))
                     .FirstOrDefault();
-
                 if (partnerConfig != null)
                 {
                     foreach (var detailDto in dto.Details)
                     {
                         var product = await _unitOfWork.Products
                             .GetByIdAsync(detailDto.ProductId);
-
-                        // Determinar porcentaje de comisión
-                        decimal commissionPercent = partnerConfig.CommissionPercent;
-
+                        decimal partnerPrice;
+                        decimal commissionPercent;
                         if (product!.IsPartnership)
                         {
-                            var customPrice = (await _unitOfWork.PartnerProductPrices
-                                .FindAsync(pp =>
-                                    pp.PartnerConfigId == partnerConfig.Id &&
-                                    pp.ProductId == detailDto.ProductId &&
-                                    pp.IsActive))
-                                .FirstOrDefault();
-
-                            if (customPrice != null)
-                                commissionPercent = customPrice.CustomCommission;
+                            // Producto de alianza: se entrega al precio de venta completo, sin descuento
+                            partnerPrice = product.SalePrice;
+                            commissionPercent = 0;
                         }
-
-                        // Calcular precio de socia = costo + (gananciaAS * commissionPercent/100)
-                        var gainAS = product.SalePrice - product.Cost;
-                        var partnerPrice = product.Cost + (gainAS * commissionPercent / 100);
+                        else
+                        {
+                            // Producto normal: precio = costo + (ganancia AS * % comisión / 100)
+                            commissionPercent = partnerConfig.CommissionPercent;
+                            var gainAS = product.SalePrice - product.Cost;
+                            partnerPrice = product.Cost + (gainAS * commissionPercent / 100);
+                        }
                         var partnerEarning = Math.Max(0, detailDto.UnitPrice - partnerPrice);
                         var asEarning = partnerPrice - product.Cost;
-
                         var partnerSale = new PartnerSale
                         {
                             PartnerConfigId = partnerConfig.Id,
@@ -182,14 +206,13 @@ namespace NexusAs.Application.Services
                             CommissionPercent = commissionPercent,
                             PartnerEarning = partnerEarning * detailDto.Quantity,
                             AsEarning = asEarning * detailDto.Quantity,
+                            IsPartnership = product.IsPartnership,
                             Date = DateTime.Now
                         };
-
                         await _unitOfWork.PartnerSales.AddAsync(partnerSale);
                     }
                 }
             }
-
             await _unitOfWork.SaveChangesAsync();
             return _mapper.Map<SaleDto>(sale);
         }

@@ -18,9 +18,12 @@ namespace NexusAs.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<UserDto>> GetAllAsync()
+        public async Task<IEnumerable<UserDto>> GetAllAsync(bool includeInactive = false)
         {
-            var users = await _unitOfWork.Users.GetAllAsync();
+            var users = includeInactive
+                ? await _unitOfWork.Users.FindAsync(u => true)
+                : await _unitOfWork.Users.GetAllAsync();
+
             return _mapper.Map<IEnumerable<UserDto>>(users);
         }
 
@@ -39,11 +42,9 @@ namespace NexusAs.Application.Services
             if (exists)
                 throw new BusinessException(
                     $"Ya existe un usuario con el nombre '{dto.Username}'.");
-
             if (!Enum.TryParse<UserRole>(dto.Role, out var role))
                 throw new BusinessException(
                     "Rol inválido. Use: Admin, Seller o Partner.");
-
             var user = new User
             {
                 Username = dto.Username,
@@ -51,15 +52,26 @@ namespace NexusAs.Application.Services
                 FullName = dto.FullName,
                 Role = role
             };
-
             await _unitOfWork.Users.AddAsync(user);
             await _unitOfWork.SaveChangesAsync();
+
+            if (role == UserRole.Partner)
+            {
+                var partnerConfig = new PartnerConfig
+                {
+                    UserId = user.Id,
+                    CommissionPercent = 50
+                };
+                await _unitOfWork.PartnerConfigs.AddAsync(partnerConfig);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
             return _mapper.Map<UserDto>(user);
         }
 
         public async Task<UserDto> ToggleStatusAsync(int id)
         {
-            var user = await _unitOfWork.Users.GetByIdAsync(id);
+            var user = await _unitOfWork.Users.GetByIdIncludingInactiveAsync(id);
             if (user == null)
                 throw new NotFoundException(nameof(User), id);
 

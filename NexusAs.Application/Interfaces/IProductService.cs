@@ -5,7 +5,9 @@ namespace NexusAs.Application.Interfaces
 {
     public interface IProductService
     {
-        Task<PagedResponseDto<ProductDto>> GetAllAsync(int pageNumber, int pageSize, string? search = null);
+        Task<PagedResponseDto<ProductDto>> GetAllAsync(
+            int pageNumber, int pageSize, string? search = null,
+            int? categoryId = null, bool? isPartnership = null);
         Task<ProductDto?> GetByIdAsync(int id);
         Task<IEnumerable<ProductDto>> GetLowStockAsync();
         Task<ProductDto> CreateAsync(CreateProductDto dto);

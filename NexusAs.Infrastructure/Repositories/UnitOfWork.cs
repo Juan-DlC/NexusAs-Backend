@@ -10,9 +10,9 @@ namespace NexusAs.Infrastructure.Repositories
         private readonly NexusAsDbContext _context;
 
         private IRepository<Category>? _categories;
-        private IRepository<Product>? _products;
+        private IProductRepository? _products;
         private IRepository<Customer>? _customers;
-        private IRepository<User>? _users;
+        private IUserRepository? _users;
         private ISaleRepository? _sales;
         private IRepository<SaleDetail>? _saleDetails;
         private IRepository<StockMovement>? _stockMovements;
@@ -29,12 +29,12 @@ namespace NexusAs.Infrastructure.Repositories
 
         public IRepository<Category> Categories =>
             _categories ??= new BaseRepository<Category>(_context);
-        public IRepository<Product> Products =>
-            _products ??= new BaseRepository<Product>(_context);
+        public IProductRepository Products =>
+              _products ??= new ProductRepository(_context);
         public IRepository<Customer> Customers =>
             _customers ??= new BaseRepository<Customer>(_context);
-        public IRepository<User> Users =>
-            _users ??= new BaseRepository<User>(_context);
+        public IUserRepository Users =>
+            _users ??= new UserRepository(_context);
         public ISaleRepository Sales =>
             _sales ??= new SaleRepository(_context);
         public IRepository<SaleDetail> SaleDetails =>
@@ -51,6 +51,14 @@ namespace NexusAs.Infrastructure.Repositories
             _partnerSales ??= new BaseRepository<PartnerSale>(_context);
         public IRepository<PartnerLiquidation> PartnerLiquidations =>
             _partnerLiquidations ??= new BaseRepository<PartnerLiquidation>(_context);
+        private IRepository<CreditInstallment>? _creditInstallments;
+        private IRepository<CreditPayment>? _creditPayments;
+
+        public IRepository<CreditInstallment> CreditInstallments =>
+            _creditInstallments ??= new BaseRepository<CreditInstallment>(_context);
+
+        public IRepository<CreditPayment> CreditPayments =>
+            _creditPayments ??= new BaseRepository<CreditPayment>(_context);
 
         public async Task<int> SaveChangesAsync()
         {

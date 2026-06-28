@@ -23,6 +23,11 @@ namespace NexusAs.Application.Services
             _reportService = reportService;
         }
 
+        public async Task<AllianceReportDto> GetAllianceReportAsync(DateTime from, DateTime to)
+        {
+            return await _reportService.GetAllianceReportAsync(from, to);
+        }
+
         public async Task<IEnumerable<PartnerConfigDto>> GetAllPartnersAsync()
         {
             var configs = await _unitOfWork.PartnerConfigs.GetAllAsync();
@@ -220,16 +225,15 @@ namespace NexusAs.Application.Services
         }
 
         public async Task<IEnumerable<PartnerSaleDto>> GetPartnerSalesAsync(
-            int partnerConfigId,
-            DateTime? from = null,
-            DateTime? to = null)
+    int partnerConfigId,
+    DateTime? from = null,
+    DateTime? to = null)
         {
             var sales = await _unitOfWork.PartnerSales
                 .FindAsync(ps =>
                     ps.PartnerConfigId == partnerConfigId &&
                     (from == null || ps.Date >= from) &&
                     (to == null || ps.Date <= to));
-
             var result = new List<PartnerSaleDto>();
             foreach (var sale in sales)
             {
@@ -246,6 +250,7 @@ namespace NexusAs.Application.Services
                     CommissionPercent = sale.CommissionPercent,
                     PartnerEarning = sale.PartnerEarning,
                     AsEarning = sale.AsEarning,
+                    IsPartnership = sale.IsPartnership,
                     Date = sale.Date,
                     SaleNumber = saleRecord?.SaleNumber ?? ""
                 });
@@ -291,6 +296,63 @@ namespace NexusAs.Application.Services
                 PeriodFrom = liquidation.PeriodFrom,
                 PeriodTo = liquidation.PeriodTo
             };
+        }
+
+        public async Task<decimal> CalculatePartnerPriceAsync(int partnerConfigId, int productId)
+        {
+            var partnerConfig = await _unitOfWork.PartnerConfigs.GetByIdAsync(partnerConfigId);
+            if (partnerConfig == null)
+                throw new NotFoundException("PartnerConfig", partnerConfigId);
+
+            var product = await _unitOfWork.Products.GetByIdAsync(productId);
+            if (product == null)
+                throw new NotFoundException("Product", productId);
+
+            if (product.IsPartnership)
+                return product.SalePrice;
+
+            var gainAS = product.SalePrice - product.Cost;
+            return product.Cost + (gainAS * partnerConfig.CommissionPercent / 100);
+        }
+
+        public async Task<IEnumerable<PartnerProductViewDto>> GetMyProductsAsync(int partnerConfigId)
+        {
+            var partnerConfig = await _unitOfWork.PartnerConfigs.GetByIdAsync(partnerConfigId);
+            if (partnerConfig == null)
+                throw new NotFoundException("PartnerConfig", partnerConfigId);
+
+            var (products, _) = await _unitOfWork.Products.GetAllPagedAsync(
+                null, null, null, 1, 1000);
+
+            var result = new List<PartnerProductViewDto>();
+            foreach (var product in products)
+            {
+                decimal partnerPrice;
+
+                if (product.IsPartnership)
+                {
+                    partnerPrice = product.SalePrice;
+                }
+                else
+                {
+                    var gainAS = product.SalePrice - product.Cost;
+                    partnerPrice = product.Cost + (gainAS * partnerConfig.CommissionPercent / 100);
+                }
+
+                result.Add(new PartnerProductViewDto
+                {
+                    ProductId = product.Id,
+                    Code = product.Code,
+                    Name = product.Name,
+                    CategoryName = product.Category?.Name ?? "",
+                    Stock = product.Stock,
+                    PartnerPrice = Math.Round(partnerPrice, 0),
+                    SuggestedPrice = product.SalePrice,
+                    IsPartnership = product.IsPartnership
+                });
+            }
+
+            return result;
         }
 
         public async Task<IEnumerable<PartnerLiquidationDto>> GetLiquidationsAsync(

@@ -13,6 +13,7 @@ namespace NexusAs.Application.DTOs.Products
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? Brand { get; set; }
+        public decimal Cost { get; set; }
         public decimal SalePrice { get; set; }
         public int Stock { get; set; }
         public int MinStock { get; set; }
@@ -20,5 +21,6 @@ namespace NexusAs.Application.DTOs.Products
         public string? ImagePath { get; set; }
         public string CategoryName { get; set; } = string.Empty;
         public int CategoryId { get; set; }
+        public bool IsPartnership { get; set; }
     }
 }

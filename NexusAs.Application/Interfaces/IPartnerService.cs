@@ -15,6 +15,8 @@ namespace NexusAs.Application.Interfaces
         Task<IEnumerable<PartnerSaleDto>> GetPartnerSalesAsync(int partnerConfigId, DateTime? from = null, DateTime? to = null);
         Task<PartnerLiquidationDto> RegisterLiquidationAsync(int partnerConfigId, RegisterPartnerLiquidationDto dto);
         Task<IEnumerable<PartnerLiquidationDto>> GetLiquidationsAsync(int partnerConfigId);
+        Task<AllianceReportDto> GetAllianceReportAsync(DateTime from, DateTime to);
         Task<byte[]> GeneratePartnerStatementAsync(int partnerConfigId, DateTime from, DateTime to);
+        Task<IEnumerable<PartnerProductViewDto>> GetMyProductsAsync(int partnerConfigId);
     }
 }

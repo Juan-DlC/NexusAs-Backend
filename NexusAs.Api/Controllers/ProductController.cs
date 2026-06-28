@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexusAs.Api.Responses;
+using NexusAs.Application.DTOs.Common;
 using NexusAs.Application.DTOs.Products;
 using NexusAs.Application.Interfaces;
 
@@ -22,10 +23,12 @@ namespace NexusAs.Api.Controllers
         public async Task<IActionResult> GetAll(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
-            [FromQuery] string? search = null)
+            [FromQuery] string? search = null,
+            [FromQuery] int? categoryId = null,
+            [FromQuery] bool? isPartnership = null)
         {
-            var products = await _productService.GetAllAsync(pageNumber, pageSize, search);
-            return Ok(ApiResponse<object>.Success(products));
+            var products = await _productService.GetAllAsync(pageNumber, pageSize, search, categoryId, isPartnership);
+            return Ok(ApiResponse<PagedResponseDto<ProductDto>>.Success(products));
         }
 
         [HttpGet("{id}")]

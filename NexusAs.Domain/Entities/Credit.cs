@@ -19,5 +19,8 @@ namespace NexusAs.Domain.Entities
         public CreditStatus Status { get; set; }
         public DateTime? DueDate { get; set; }
         public string? Notes { get; set; }
+        public ICollection<CreditPayment> Payments { get; set; } = new List<CreditPayment>();
+        public int NumberOfInstallments { get; set; } = 1;
+        public ICollection<CreditInstallment> Installments { get; set; } = new List<CreditInstallment>();
     }
 }

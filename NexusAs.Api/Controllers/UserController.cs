@@ -21,9 +21,9 @@ namespace NexusAs.Api.Controllers
 
         [HttpGet]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] bool includeInactive = false)
         {
-            var users = await _userService.GetAllAsync();
+            var users = await _userService.GetAllAsync(includeInactive);
             return Ok(ApiResponse<IEnumerable<UserDto>>.Success(users));
         }
 

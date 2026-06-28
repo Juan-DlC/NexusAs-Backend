@@ -19,7 +19,25 @@ namespace NexusAs.Api.Controllers
             _partnerService = partnerService;
         }
 
-        // ── ADMIN endpoints ──────────────────────────────
+        [HttpGet("alliance-report")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllianceReport(
+            [FromQuery] DateTime from,
+            [FromQuery] DateTime to)
+        {
+            var report = await _partnerService.GetAllianceReportAsync(from, to);
+            return Ok(ApiResponse<AllianceReportDto>.Success(report));
+        }
+
+        [HttpGet("my/products")]
+        [Authorize(Roles = "Partner")]
+        public async Task<IActionResult> GetMyProducts()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var config = await GetPartnerConfigByUserId(userId);
+            var products = await _partnerService.GetMyProductsAsync(config.Id);
+            return Ok(ApiResponse<IEnumerable<PartnerProductViewDto>>.Success(products));
+        }
 
         [HttpGet]
         [Authorize(Roles = "Admin")]

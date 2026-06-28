@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NexusAs.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using NexusAs.Infrastructure.Data;
 namespace NexusAs.Infrastructure.Migrations
 {
     [DbContext(typeof(NexusAsDbContext))]
-    partial class NexusAsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260620174630_AddCreditPaymentsAndInstallments")]
+    partial class AddCreditPaymentsAndInstallments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -385,9 +388,6 @@ namespace NexusAs.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsPartnership")
                         .HasColumnType("bit");
 
                     b.Property<int>("PartnerConfigId")

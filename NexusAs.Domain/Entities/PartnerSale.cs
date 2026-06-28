@@ -15,6 +15,7 @@
         public decimal CommissionPercent { get; set; }
         public decimal PartnerEarning { get; set; }
         public decimal AsEarning { get; set; }
+        public bool IsPartnership { get; set; }
         public DateTime Date { get; set; }
     }
 }
