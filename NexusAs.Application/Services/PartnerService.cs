@@ -11,21 +11,21 @@ namespace NexusAs.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
-        private readonly IReportService _reportService;
+        private readonly IPartnerReportService _partnerReportService;
 
         public PartnerService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
-            IReportService reportService)
+            IPartnerReportService partnerReportService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
-            _reportService = reportService;
+            _partnerReportService = partnerReportService;
         }
 
         public async Task<AllianceReportDto> GetAllianceReportAsync(DateTime from, DateTime to)
         {
-            return await _reportService.GetAllianceReportAsync(from, to);
+            return await _partnerReportService.GetAllianceReportAsync(from, to);
         }
 
         public async Task<IEnumerable<PartnerConfigDto>> GetAllPartnersAsync()
@@ -378,7 +378,7 @@ namespace NexusAs.Application.Services
             DateTime from,
             DateTime to)
         {
-            return await _reportService
+            return await _partnerReportService
                 .GeneratePartnerStatementPdfAsync(partnerConfigId, from, to);
         }
     }

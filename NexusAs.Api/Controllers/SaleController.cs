@@ -15,12 +15,12 @@ using NexusAs.Application.DTOs.Sales;
         public class SaleController : ControllerBase
         {
             private readonly ISaleService _saleService;
-            private readonly IReportService _reportService;
+            private readonly IReceiptService _receiptService;
 
-            public SaleController(ISaleService saleService, IReportService reportService)
+            public SaleController(ISaleService saleService, IReceiptService receiptService)
             {
                 _saleService = saleService;
-                _reportService = reportService;
+                _receiptService = receiptService;
             }
 
             [HttpGet]
@@ -48,7 +48,7 @@ using NexusAs.Application.DTOs.Sales;
             [HttpGet("{id}/receipt")]
             public async Task<IActionResult> GetReceipt(int id)
             {
-                var pdf = await _reportService.GenerateSaleReceiptAsync(id);
+                var pdf = await _receiptService.GenerateSaleReceiptAsync(id);
                 return File(pdf, "application/pdf", $"Recibo_{id}.pdf");
             }
 

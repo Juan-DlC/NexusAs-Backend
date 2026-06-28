@@ -26,7 +26,11 @@ namespace NexusAs.DI.Extensions
                 options.Filters.Add<GlobalExceptionFilter>();
             });
 
-            services.AddScoped<IReportService, ReportService>();
+            services.AddScoped<ReportStyleHelper>();
+            services.AddScoped<ISalesReportService, SalesReportService>();
+            services.AddScoped<ICatalogReportService, CatalogReportService>();
+            services.AddScoped<IReceiptService, ReceiptService>();
+            services.AddScoped<IPartnerReportService, PartnerReportService>();
 
             return services;
         }
