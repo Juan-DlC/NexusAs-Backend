@@ -10,7 +10,7 @@ namespace NexusAs.Application.Interfaces
         IUserRepository Users { get; }
         ISaleRepository Sales { get; }
         IRepository<SaleDetail> SaleDetails { get; }
-        IRepository<StockMovement> StockMovements { get; }
+        IStockRepository StockMovements { get; }
         ICreditRepository Credits { get; }
         IRepository<PartnerConfig> PartnerConfigs { get; }
         IRepository<PartnerProductPrice> PartnerProductPrices { get; }

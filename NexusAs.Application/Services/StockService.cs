@@ -24,9 +24,7 @@ namespace NexusAs.Application.Services
             if (product == null)
                 throw new NotFoundException(nameof(Product), productId);
 
-            var movements = await _unitOfWork.StockMovements
-                .FindAsync(m => m.ProductId == productId);
-
+            var movements = await _unitOfWork.StockMovements.GetMovementsByProductAsync(productId);
             return _mapper.Map<IEnumerable<StockMovementDto>>(movements);
         }
 

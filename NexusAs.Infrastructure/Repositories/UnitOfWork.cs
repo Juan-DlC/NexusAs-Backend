@@ -15,7 +15,7 @@ namespace NexusAs.Infrastructure.Repositories
         private IUserRepository? _users;
         private ISaleRepository? _sales;
         private IRepository<SaleDetail>? _saleDetails;
-        private IRepository<StockMovement>? _stockMovements;
+        private IStockRepository? _stockMovements;
         private ICreditRepository? _credits;
         private IRepository<PartnerConfig>? _partnerConfigs;
         private IRepository<PartnerProductPrice>? _partnerProductPrices;
@@ -39,8 +39,8 @@ namespace NexusAs.Infrastructure.Repositories
             _sales ??= new SaleRepository(_context);
         public IRepository<SaleDetail> SaleDetails =>
             _saleDetails ??= new BaseRepository<SaleDetail>(_context);
-        public IRepository<StockMovement> StockMovements =>
-            _stockMovements ??= new BaseRepository<StockMovement>(_context);
+        public IStockRepository StockMovements =>
+             _stockMovements ??= new StockRepository(_context);
         public ICreditRepository Credits =>
             _credits ??= new CreditRepository(_context);
         public IRepository<PartnerConfig> PartnerConfigs =>

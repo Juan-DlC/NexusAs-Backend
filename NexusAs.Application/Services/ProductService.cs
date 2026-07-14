@@ -20,10 +20,11 @@ namespace NexusAs.Application.Services
 
         public async Task<PagedResponseDto<ProductDto>> GetAllAsync(
             int pageNumber, int pageSize, string? search = null,
-            int? categoryId = null, bool? isPartnership = null)
+            int? categoryId = null, bool? isPartnership = null,
+            bool? inStock = null)
         {
             var (products, totalRecords) = await _unitOfWork.Products.GetAllPagedAsync(
-                search, categoryId, isPartnership, pageNumber, pageSize);
+                search, categoryId, isPartnership, pageNumber, pageSize, inStock);
 
             return new PagedResponseDto<ProductDto>
             {

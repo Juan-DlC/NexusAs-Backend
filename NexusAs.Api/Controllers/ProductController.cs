@@ -25,9 +25,11 @@ namespace NexusAs.Api.Controllers
             [FromQuery] int pageSize = 10,
             [FromQuery] string? search = null,
             [FromQuery] int? categoryId = null,
-            [FromQuery] bool? isPartnership = null)
+            [FromQuery] bool? isPartnership = null,
+            [FromQuery] bool? inStock = null)
         {
-            var products = await _productService.GetAllAsync(pageNumber, pageSize, search, categoryId, isPartnership);
+            var products = await _productService.GetAllAsync(
+                pageNumber, pageSize, search, categoryId, isPartnership, inStock);
             return Ok(ApiResponse<PagedResponseDto<ProductDto>>.Success(products));
         }
 

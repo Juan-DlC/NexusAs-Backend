@@ -13,7 +13,7 @@ namespace NexusAs.Infrastructure.Repositories
 
         public async Task<(IEnumerable<Product> Items, int TotalRecords)> GetAllPagedAsync(
             string? search, int? categoryId, bool? isPartnership,
-            int pageNumber, int pageSize)
+            int pageNumber, int pageSize, bool? inStock = null)
         {
             var query = _context.Products
                 .Include(p => p.Category)
@@ -22,7 +22,9 @@ namespace NexusAs.Infrastructure.Repositories
             if (!string.IsNullOrWhiteSpace(search))
             {
                 query = query.Where(p =>
-                    p.Name.Contains(search) || p.Code.Contains(search));
+                    p.Name.Contains(search) ||
+                    p.Code.Contains(search) ||
+                    (p.Description != null && p.Description.Contains(search)));
             }
 
             if (categoryId.HasValue)
@@ -33,6 +35,11 @@ namespace NexusAs.Infrastructure.Repositories
             if (isPartnership.HasValue)
             {
                 query = query.Where(p => p.IsPartnership == isPartnership.Value);
+            }
+
+            if (inStock == true)
+            {
+                query = query.Where(p => p.Stock > 0);
             }
 
             var totalRecords = await query.CountAsync();
