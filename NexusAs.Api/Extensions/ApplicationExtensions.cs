@@ -24,6 +24,8 @@ namespace NexusAs.DI.Extensions
             services.AddValidatorsFromAssemblyContaining<LoginValidator>();
             services.AddScoped<ICategoryService, CategoryService>();
             services.AddScoped<IProductService, ProductService>();
+            services.AddScoped<ISupplierService, SupplierService>();
+            services.AddScoped<IPaymentMethodService, PaymentMethodService>();
             services.AddScoped<ICustomerService, CustomerService>();
             services.AddScoped<ISaleService, SaleService>();
             services.AddScoped<ICreditService, CreditService>();

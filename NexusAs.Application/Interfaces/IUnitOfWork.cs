@@ -6,6 +6,7 @@ namespace NexusAs.Application.Interfaces
     {
         IRepository<Category> Categories { get; }
         IProductRepository Products { get; }
+        IRepository<Supplier> Suppliers { get; }
         IRepository<Customer> Customers { get; }
         IRepository<PaymentMethodEntity> PaymentMethods { get; }
         IUserRepository Users { get; }

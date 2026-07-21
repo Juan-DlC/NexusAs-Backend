@@ -8,11 +8,12 @@ namespace NexusAs.Application.Interfaces
         Task<PagedResponseDto<ProductDto>> GetAllAsync(
             int pageNumber, int pageSize, string? search = null,
             int? categoryId = null, bool? isPartnership = null,
-            bool? inStock = null);
+            bool? inStock = null, bool includeInactive = false);
         Task<ProductDto?> GetByIdAsync(int id);
         Task<IEnumerable<ProductDto>> GetLowStockAsync();
         Task<ProductDto> CreateAsync(CreateProductDto dto);
         Task<ProductDto> UpdateAsync(int id, UpdateProductDto dto);
         Task DeleteAsync(int id);
+        Task<ProductDto> ToggleStatusAsync(int id);
     }
 }

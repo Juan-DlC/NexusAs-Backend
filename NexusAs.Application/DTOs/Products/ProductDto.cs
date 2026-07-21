@@ -22,5 +22,6 @@ namespace NexusAs.Application.DTOs.Products
         public string CategoryName { get; set; } = string.Empty;
         public int CategoryId { get; set; }
         public bool IsPartnership { get; set; }
+        public bool IsActive { get; set; }
     }
 }

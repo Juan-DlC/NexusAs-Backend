@@ -13,11 +13,11 @@ namespace NexusAs.Infrastructure.Repositories
 
         public async Task<(IEnumerable<Product> Items, int TotalRecords)> GetAllPagedAsync(
             string? search, int? categoryId, bool? isPartnership,
-            int pageNumber, int pageSize, bool? inStock = null)
+            int pageNumber, int pageSize, bool? inStock = null, bool includeInactive = false)
         {
             var query = _context.Products
                 .Include(p => p.Category)
-                .Where(p => p.IsActive);
+                .Where(p => includeInactive || p.IsActive);
 
             if (!string.IsNullOrWhiteSpace(search))
             {

@@ -26,10 +26,11 @@ namespace NexusAs.Api.Controllers
             [FromQuery] string? search = null,
             [FromQuery] int? categoryId = null,
             [FromQuery] bool? isPartnership = null,
-            [FromQuery] bool? inStock = null)
+            [FromQuery] bool? inStock = null,
+            [FromQuery] bool includeInactive = false)
         {
             var products = await _productService.GetAllAsync(
-                pageNumber, pageSize, search, categoryId, isPartnership, inStock);
+                pageNumber, pageSize, search, categoryId, isPartnership, inStock, includeInactive);
             return Ok(ApiResponse<PagedResponseDto<ProductDto>>.Success(products));
         }
 
@@ -71,6 +72,20 @@ namespace NexusAs.Api.Controllers
         {
             await _productService.DeleteAsync(id);
             return Ok(ApiResponse<string>.Success("", "Producto eliminado exitosamente."));
+        }
+
+        /// <summary>
+        /// Activa o desactiva un producto (toggle)
+        /// </summary>
+        [HttpPatch("{id}/toggle-status")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ToggleStatus(int id)
+        {
+            var product = await _productService.ToggleStatusAsync(id);
+            var message = product.IsActive 
+                ? "Producto activado exitosamente." 
+                : "Producto desactivado exitosamente.";
+            return Ok(ApiResponse<ProductDto>.Success(product, message));
         }
     }
 }

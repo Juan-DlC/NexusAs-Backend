@@ -21,10 +21,10 @@ namespace NexusAs.Application.Services
         public async Task<PagedResponseDto<ProductDto>> GetAllAsync(
             int pageNumber, int pageSize, string? search = null,
             int? categoryId = null, bool? isPartnership = null,
-            bool? inStock = null)
+            bool? inStock = null, bool includeInactive = false)
         {
             var (products, totalRecords) = await _unitOfWork.Products.GetAllPagedAsync(
-                search, categoryId, isPartnership, pageNumber, pageSize, inStock);
+                search, categoryId, isPartnership, pageNumber, pageSize, inStock, includeInactive);
 
             return new PagedResponseDto<ProductDto>
             {
@@ -98,6 +98,19 @@ namespace NexusAs.Application.Services
 
             _unitOfWork.Products.Delete(product);
             await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task<ProductDto> ToggleStatusAsync(int id)
+        {
+            var product = await _unitOfWork.Products.GetByIdAsync(id);
+            if (product == null)
+                throw new NotFoundException(nameof(Product), id);
+
+            product.IsActive = !product.IsActive;
+            _unitOfWork.Products.Update(product);
+            await _unitOfWork.SaveChangesAsync();
+            
+            return _mapper.Map<ProductDto>(product);
         }
     }
 }

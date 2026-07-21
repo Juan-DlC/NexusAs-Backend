@@ -11,6 +11,7 @@ namespace NexusAs.Infrastructure.Repositories
 
         private IRepository<Category>? _categories;
         private IProductRepository? _products;
+        private IRepository<Supplier>? _suppliers;
         private IRepository<Customer>? _customers;
         private IRepository<PaymentMethodEntity>? _paymentMethods;
         private IUserRepository? _users;
@@ -32,6 +33,8 @@ namespace NexusAs.Infrastructure.Repositories
             _categories ??= new BaseRepository<Category>(_context);
         public IProductRepository Products =>
               _products ??= new ProductRepository(_context);
+        public IRepository<Supplier> Suppliers =>
+            _suppliers ??= new BaseRepository<Supplier>(_context);
         public IRepository<Customer> Customers =>
             _customers ??= new BaseRepository<Customer>(_context);
         public IRepository<PaymentMethodEntity> PaymentMethods =>

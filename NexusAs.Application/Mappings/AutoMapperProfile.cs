@@ -7,6 +7,8 @@ using NexusAs.Application.DTOs.Sales;
 using NexusAs.Application.DTOs.Credits;
 using NexusAs.Application.DTOs.Stock;
 using NexusAs.Application.DTOs.Users;
+using NexusAs.Application.DTOs.Suppliers;
+using NexusAs.Application.DTOs.PaymentMethods;
 
 namespace NexusAs.Application.Mappings
 {
@@ -18,6 +20,14 @@ namespace NexusAs.Application.Mappings
             CreateMap<Category, CategoryDto>();
             CreateMap<CreateCategoryDto, Category>();
             CreateMap<UpdateCategoryDto, Category>();
+
+            // Supplier mappings
+            CreateMap<Supplier, SupplierDto>();
+            CreateMap<CreateSupplierDto, Supplier>();
+            CreateMap<UpdateSupplierDto, Supplier>();
+
+            // PaymentMethod mappings
+            CreateMap<PaymentMethodEntity, PaymentMethodDto>();
 
             // Product mappings
             CreateMap<Product, ProductDto>()
