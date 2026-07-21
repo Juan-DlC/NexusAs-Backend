@@ -17,6 +17,7 @@ namespace NexusAs.Infrastructure.Repositories
             var query = _context.Sales
                 .Include(s => s.Customer)
                 .Include(s => s.User)
+                .Include(s => s.PaymentMethodEntity)
                 .Where(s => s.IsActive &&
                     (userRole == "Admin" || s.UserId == userId) &&
                     (from == null || s.Date >= from) &&
@@ -45,6 +46,7 @@ namespace NexusAs.Infrastructure.Repositories
             return await _context.Sales
                 .Include(s => s.Customer)
                 .Include(s => s.User)
+                .Include(s => s.PaymentMethodEntity)
                 .Include(s => s.SaleDetails)
                     .ThenInclude(sd => sd.Product)
                 .Include(s => s.Credit)

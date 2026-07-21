@@ -176,7 +176,7 @@ namespace NexusAs.Infrastructure.Services
 
                             table.Cell().Text("Método de pago:").Bold();
                             table.Cell().AlignRight()
-                                .Text(sale.PaymentMethod == PaymentMethod.Cash
+                                .Text(sale.PaymentMethodEntity?.Code == "CASH"
                                     ? "Contado ✓" : "Crédito");
                         });
 

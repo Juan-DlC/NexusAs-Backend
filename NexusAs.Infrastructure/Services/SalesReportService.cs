@@ -87,10 +87,10 @@ namespace NexusAs.Infrastructure.Services
                                     .Text($"${salesList.Sum(s => s.Total):N0}");
                                 table.Cell().Text("Total Contado:").Bold();
                                 table.Cell().AlignRight()
-                                    .Text($"${salesList.Where(s => s.PaymentMethod == PaymentMethod.Cash).Sum(s => s.Total):N0}");
+                                    .Text($"${salesList.Where(s => s.PaymentMethodEntity != null && s.PaymentMethodEntity.Code == "CASH").Sum(s => s.Total):N0}");
                                 table.Cell().Text("Total Crédito:").Bold();
                                 table.Cell().AlignRight()
-                                    .Text($"${salesList.Where(s => s.PaymentMethod == PaymentMethod.Credit).Sum(s => s.Total):N0}");
+                                    .Text($"${salesList.Where(s => s.PaymentMethodEntity != null && s.PaymentMethodEntity.Code == "CREDIT").Sum(s => s.Total):N0}");
                                 table.Cell().Text("Número de Transacciones:").Bold();
                                 table.Cell().AlignRight()
                                     .Text($"{salesList.Count}");
@@ -133,7 +133,7 @@ namespace NexusAs.Infrastructure.Services
                                 table.Cell().Background(bg).Padding(5)
                                     .Text(sale.Date.ToString("dd/MM/yy"));
                                 table.Cell().Background(bg).Padding(5)
-                                    .Text(sale.PaymentMethod == PaymentMethod.Cash
+                                    .Text(sale.PaymentMethodEntity?.Code == "CASH"
                                         ? "Contado" : "Crédito");
                                 table.Cell().Background(bg).Padding(5)
                                     .Text($"${sale.Total:N0}");
@@ -207,7 +207,7 @@ namespace NexusAs.Infrastructure.Services
                 ws.Cell(row, 1).Value = sale.SaleNumber;
                 ws.Cell(row, 2).Value = sale.Customer?.Name ?? "Sin cliente";
                 ws.Cell(row, 3).Value = sale.Date.ToString("dd/MM/yyyy");
-                ws.Cell(row, 4).Value = sale.PaymentMethod == PaymentMethod.Cash
+                ws.Cell(row, 4).Value = sale.PaymentMethodEntity?.Code == "CASH"
                     ? "Contado" : "Crédito";
                 ws.Cell(row, 5).Value = sale.Total;
                 ws.Cell(row, 5).Style.NumberFormat.Format = "$#,##0";

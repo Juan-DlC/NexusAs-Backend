@@ -37,10 +37,10 @@ namespace NexusAs.Application.Services
             {
                 TodaySales = salesList.Sum(s => s.Total),
                 TodayCash = salesList
-                    .Where(s => s.PaymentMethod == PaymentMethod.Cash)
+                    .Where(s => s.PaymentMethodEntity != null && s.PaymentMethodEntity.Code == "CASH")
                     .Sum(s => s.Total),
                 TodayCredit = salesList
-                    .Where(s => s.PaymentMethod == PaymentMethod.Credit)
+                    .Where(s => s.PaymentMethodEntity != null && s.PaymentMethodEntity.Code == "CREDIT")
                     .Sum(s => s.Total),
                 TodayTransactions = salesList.Count,
                 PendingCredits = pendingCredits.Count(),

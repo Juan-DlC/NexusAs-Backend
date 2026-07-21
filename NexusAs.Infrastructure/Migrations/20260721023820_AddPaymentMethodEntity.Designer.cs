@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NexusAs.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using NexusAs.Infrastructure.Data;
 namespace NexusAs.Infrastructure.Migrations
 {
     [DbContext(typeof(NexusAsDbContext))]
-    partial class NexusAsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260721023820_AddPaymentMethodEntity")]
+    partial class AddPaymentMethodEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -470,7 +473,7 @@ namespace NexusAs.Infrastructure.Migrations
                         {
                             Id = 1,
                             Code = "CASH",
-                            CreatedAt = new DateTime(2026, 7, 20, 21, 44, 18, 997, DateTimeKind.Local).AddTicks(9873),
+                            CreatedAt = new DateTime(2026, 7, 20, 21, 38, 19, 645, DateTimeKind.Local).AddTicks(1060),
                             Description = "Pago en efectivo",
                             IsActive = true,
                             Name = "Contado"
@@ -479,7 +482,7 @@ namespace NexusAs.Infrastructure.Migrations
                         {
                             Id = 2,
                             Code = "CREDIT",
-                            CreatedAt = new DateTime(2026, 7, 20, 21, 44, 18, 997, DateTimeKind.Local).AddTicks(9888),
+                            CreatedAt = new DateTime(2026, 7, 20, 21, 38, 19, 645, DateTimeKind.Local).AddTicks(1072),
                             Description = "Pago a crédito",
                             IsActive = true,
                             Name = "Crédito"
@@ -488,7 +491,7 @@ namespace NexusAs.Infrastructure.Migrations
                         {
                             Id = 3,
                             Code = "ADDI",
-                            CreatedAt = new DateTime(2026, 7, 20, 21, 44, 18, 997, DateTimeKind.Local).AddTicks(9889),
+                            CreatedAt = new DateTime(2026, 7, 20, 21, 38, 19, 645, DateTimeKind.Local).AddTicks(1074),
                             Description = "Pago mediante plataforma Addi",
                             IsActive = true,
                             Name = "Addi"
@@ -497,7 +500,7 @@ namespace NexusAs.Infrastructure.Migrations
                         {
                             Id = 4,
                             Code = "SISTECREDITO",
-                            CreatedAt = new DateTime(2026, 7, 20, 21, 44, 18, 997, DateTimeKind.Local).AddTicks(9891),
+                            CreatedAt = new DateTime(2026, 7, 20, 21, 38, 19, 645, DateTimeKind.Local).AddTicks(1075),
                             Description = "Pago mediante Sistecredito",
                             IsActive = true,
                             Name = "Sistecredito"
@@ -506,7 +509,7 @@ namespace NexusAs.Infrastructure.Migrations
                         {
                             Id = 5,
                             Code = "CARD",
-                            CreatedAt = new DateTime(2026, 7, 20, 21, 44, 18, 997, DateTimeKind.Local).AddTicks(9892),
+                            CreatedAt = new DateTime(2026, 7, 20, 21, 38, 19, 645, DateTimeKind.Local).AddTicks(1076),
                             Description = "Pago con tarjeta de crédito o débito",
                             IsActive = true,
                             Name = "Tarjeta"
@@ -616,7 +619,12 @@ namespace NexusAs.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int>("PaymentMethodId")
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("PaymentMethodId")
                         .HasColumnType("int");
 
                     b.Property<string>("SaleNumber")
@@ -982,8 +990,7 @@ namespace NexusAs.Infrastructure.Migrations
                     b.HasOne("NexusAs.Domain.Entities.PaymentMethodEntity", "PaymentMethodEntity")
                         .WithMany("Sales")
                         .HasForeignKey("PaymentMethodId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("NexusAs.Domain.Entities.User", "User")
                         .WithMany("Sales")

@@ -35,7 +35,8 @@ namespace NexusAs.Application.Mappings
 
             CreateMap<Sale, SaleDto>()
             .ForMember(dest => dest.PaymentMethod,
-                opt => opt.MapFrom(src => src.PaymentMethod.ToString()))
+                opt => opt.MapFrom(src => src.PaymentMethodEntity != null
+                    ? src.PaymentMethodEntity.Name : string.Empty))
             .ForMember(dest => dest.CustomerName,
                 opt => opt.MapFrom(src => src.Customer != null
                     ? src.Customer.Name : null))

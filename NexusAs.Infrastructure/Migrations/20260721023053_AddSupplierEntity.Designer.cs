@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NexusAs.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using NexusAs.Infrastructure.Data;
 namespace NexusAs.Infrastructure.Migrations
 {
     [DbContext(typeof(NexusAsDbContext))]
-    partial class NexusAsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260721023053_AddSupplierEntity")]
+    partial class AddSupplierEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -425,94 +428,6 @@ namespace NexusAs.Infrastructure.Migrations
                     b.ToTable("PartnerSales", (string)null);
                 });
 
-            modelBuilder.Entity("NexusAs.Domain.Entities.PaymentMethodEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.ToTable("PaymentMethods", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Code = "CASH",
-                            CreatedAt = new DateTime(2026, 7, 20, 21, 44, 18, 997, DateTimeKind.Local).AddTicks(9873),
-                            Description = "Pago en efectivo",
-                            IsActive = true,
-                            Name = "Contado"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Code = "CREDIT",
-                            CreatedAt = new DateTime(2026, 7, 20, 21, 44, 18, 997, DateTimeKind.Local).AddTicks(9888),
-                            Description = "Pago a crédito",
-                            IsActive = true,
-                            Name = "Crédito"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Code = "ADDI",
-                            CreatedAt = new DateTime(2026, 7, 20, 21, 44, 18, 997, DateTimeKind.Local).AddTicks(9889),
-                            Description = "Pago mediante plataforma Addi",
-                            IsActive = true,
-                            Name = "Addi"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Code = "SISTECREDITO",
-                            CreatedAt = new DateTime(2026, 7, 20, 21, 44, 18, 997, DateTimeKind.Local).AddTicks(9891),
-                            Description = "Pago mediante Sistecredito",
-                            IsActive = true,
-                            Name = "Sistecredito"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Code = "CARD",
-                            CreatedAt = new DateTime(2026, 7, 20, 21, 44, 18, 997, DateTimeKind.Local).AddTicks(9892),
-                            Description = "Pago con tarjeta de crédito o débito",
-                            IsActive = true,
-                            Name = "Tarjeta"
-                        });
-                });
-
             modelBuilder.Entity("NexusAs.Domain.Entities.Product", b =>
                 {
                     b.Property<int>("Id")
@@ -616,8 +531,10 @@ namespace NexusAs.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int>("PaymentMethodId")
-                        .HasColumnType("int");
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("SaleNumber")
                         .IsRequired()
@@ -639,8 +556,6 @@ namespace NexusAs.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
-
-                    b.HasIndex("PaymentMethodId");
 
                     b.HasIndex("SaleNumber")
                         .IsUnique();
@@ -979,12 +894,6 @@ namespace NexusAs.Infrastructure.Migrations
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("NexusAs.Domain.Entities.PaymentMethodEntity", "PaymentMethodEntity")
-                        .WithMany("Sales")
-                        .HasForeignKey("PaymentMethodId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("NexusAs.Domain.Entities.User", "User")
                         .WithMany("Sales")
                         .HasForeignKey("UserId")
@@ -992,8 +901,6 @@ namespace NexusAs.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Customer");
-
-                    b.Navigation("PaymentMethodEntity");
 
                     b.Navigation("User");
                 });
@@ -1068,11 +975,6 @@ namespace NexusAs.Infrastructure.Migrations
                     b.Navigation("PartnerSales");
 
                     b.Navigation("ProductPrices");
-                });
-
-            modelBuilder.Entity("NexusAs.Domain.Entities.PaymentMethodEntity", b =>
-                {
-                    b.Navigation("Sales");
                 });
 
             modelBuilder.Entity("NexusAs.Domain.Entities.Product", b =>

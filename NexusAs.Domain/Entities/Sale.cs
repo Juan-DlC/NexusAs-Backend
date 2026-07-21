@@ -14,7 +14,8 @@ namespace NexusAs.Domain.Entities
         public decimal Subtotal { get; set; }
         public decimal Discount { get; set; }
         public decimal Total { get; set; }
-        public PaymentMethod PaymentMethod { get; set; }
+        public int PaymentMethodId { get; set; }
+        public PaymentMethodEntity? PaymentMethodEntity { get; set; }
         public string? Notes { get; set; }
         public int? CustomerId { get; set; }
         public Customer? Customer { get; set; }

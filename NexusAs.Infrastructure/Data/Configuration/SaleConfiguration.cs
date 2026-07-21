@@ -21,7 +21,6 @@ namespace NexusAs.Infrastructure.Data.Configurations
             builder.Property(s => s.Subtotal).HasColumnType("decimal(18,2)");
             builder.Property(s => s.Discount).HasColumnType("decimal(18,2)").HasDefaultValue(0);
             builder.Property(s => s.Total).HasColumnType("decimal(18,2)");
-            builder.Property(s => s.PaymentMethod).HasConversion<string>().HasMaxLength(20);
             builder.Property(s => s.Notes).HasMaxLength(500);
             builder.Property(s => s.CreatedAt).IsRequired();
             builder.HasOne(s => s.Customer)

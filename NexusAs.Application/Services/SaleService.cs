@@ -79,9 +79,14 @@ namespace NexusAs.Application.Services
             var subtotal = dto.Details.Sum(d => d.Quantity * d.UnitPrice);
             var total = subtotal - dto.Discount;
             //Crear la venta
-            var paymentMethod = dto.PaymentMethod == "Cash"
-                ? PaymentMethod.Cash
-                : PaymentMethod.Credit;
+            // Buscar el método de pago por código
+            var paymentMethods = await _unitOfWork.PaymentMethods.GetAllAsync();
+            var paymentMethod = paymentMethods.FirstOrDefault(pm =>
+                pm.Code.Equals(dto.PaymentMethod, StringComparison.OrdinalIgnoreCase));
+
+            if (paymentMethod == null)
+                throw new BusinessException($"Método de pago '{dto.PaymentMethod}' no válido.");
+
             var sale = new Sale
             {
                 SaleNumber = saleNumber,
@@ -89,7 +94,7 @@ namespace NexusAs.Application.Services
                 Subtotal = subtotal,
                 Discount = dto.Discount,
                 Total = total,
-                PaymentMethod = paymentMethod,
+                PaymentMethodId = paymentMethod.Id,
                 Notes = dto.Notes,
                 CustomerId = dto.CustomerId,
                 UserId = userId
@@ -130,7 +135,7 @@ namespace NexusAs.Application.Services
                 _unitOfWork.Products.Update(product);
             }
             //Si es crédito, crear registro de crédito
-            if (paymentMethod == PaymentMethod.Credit)
+            if (paymentMethod.Code == "CREDIT")
             {
                 if (dto.CustomerId == null)
                     throw new BusinessException(
