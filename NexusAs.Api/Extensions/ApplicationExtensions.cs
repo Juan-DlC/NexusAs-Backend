@@ -33,6 +33,7 @@ namespace NexusAs.DI.Extensions
             services.AddScoped<IDashboardService, DashboardService>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IPartnerService, PartnerService>();
+            services.AddScoped<IReturnService, ReturnService>();
 
             return services;
         }

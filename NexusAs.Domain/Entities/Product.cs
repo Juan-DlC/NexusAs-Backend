@@ -22,6 +22,7 @@ namespace NexusAs.Domain.Entities
         public int? SupplierId { get; set; }
         public Supplier? Supplier { get; set; }
         public ICollection<SaleDetail> SaleDetails { get; set; } = new List<SaleDetail>();
+        public ICollection<ReturnDetail> ReturnDetails { get; set; } = new List<ReturnDetail>();
         public ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
         public bool IsPartnership { get; set; } = false;
     }

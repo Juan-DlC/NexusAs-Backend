@@ -9,6 +9,7 @@ using NexusAs.Application.DTOs.Stock;
 using NexusAs.Application.DTOs.Users;
 using NexusAs.Application.DTOs.Suppliers;
 using NexusAs.Application.DTOs.PaymentMethods;
+using NexusAs.Application.DTOs.Returns;
 
 namespace NexusAs.Application.Mappings
 {
@@ -87,6 +88,24 @@ namespace NexusAs.Application.Mappings
                 .ForMember(dest => dest.UserName,
                     opt => opt.MapFrom(src => src.User != null
                         ? src.User.FullName : string.Empty));
+
+            //Return
+            CreateMap<Return, ReturnDto>()
+                .ForMember(dest => dest.Type,
+                    opt => opt.MapFrom(src => src.Type.ToString()))
+                .ForMember(dest => dest.SaleNumber,
+                    opt => opt.MapFrom(src => src.Sale != null
+                        ? src.Sale.SaleNumber : string.Empty))
+                .ForMember(dest => dest.UserName,
+                    opt => opt.MapFrom(src => src.User != null
+                        ? src.User.FullName : string.Empty))
+                .ForMember(dest => dest.Details,
+                    opt => opt.MapFrom(src => src.ReturnDetails));
+
+            CreateMap<ReturnDetail, ReturnDetailDto>()
+                .ForMember(dest => dest.ProductName,
+                    opt => opt.MapFrom(src => src.Product != null
+                        ? src.Product.Name : string.Empty));
         }
     }
 }

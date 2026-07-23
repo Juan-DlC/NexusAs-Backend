@@ -21,5 +21,7 @@ namespace NexusAs.Application.Interfaces
         Task<int> SaveChangesAsync();
         IRepository<CreditInstallment> CreditInstallments { get; }
         IRepository<CreditPayment> CreditPayments { get; }
+        IRepository<Return> Returns { get; }
+        IRepository<ReturnDetail> ReturnDetails { get; }
     }
 }

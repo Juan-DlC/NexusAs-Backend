@@ -27,6 +27,8 @@ namespace NexusAs.Infrastructure.Data
         public DbSet<PartnerLiquidation> PartnerLiquidations { get; set; }
         public DbSet<CreditPayment> CreditPayments { get; set; }
         public DbSet<CreditInstallment> CreditInstallments { get; set; }
+        public DbSet<Return> Returns { get; set; }
+        public DbSet<ReturnDetail> ReturnDetails { get; set; }
 
         public override async Task<int> SaveChangesAsync(
             CancellationToken cancellationToken = default)

@@ -15,5 +15,6 @@ namespace NexusAs.Domain.Entities
         public UserRole Role { get; set; }
         public ICollection<Sale> Sales { get; set; } = new List<Sale>();
         public ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
+        public ICollection<Return> Returns { get; set; } = new List<Return>();
     }
 }
