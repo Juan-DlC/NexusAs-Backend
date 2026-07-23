@@ -60,7 +60,8 @@ namespace NexusAs.Application.Services
                 var partnerConfig = new PartnerConfig
                 {
                     UserId = user.Id,
-                    CommissionPercent = 50
+                    CommissionPercent = 50,
+                    AllianceCommissionPercent = 20
                 };
                 await _unitOfWork.PartnerConfigs.AddAsync(partnerConfig);
                 await _unitOfWork.SaveChangesAsync();

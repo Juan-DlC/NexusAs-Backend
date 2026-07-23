@@ -5,6 +5,7 @@
         public int UserId { get; set; }
         public User? User { get; set; }
         public decimal CommissionPercent { get; set; } = 50;
+        public decimal AllianceCommissionPercent { get; set; } = 20;
         public string? Notes { get; set; }
         public ICollection<PartnerProductPrice> ProductPrices { get; set; }
             = new List<PartnerProductPrice>();

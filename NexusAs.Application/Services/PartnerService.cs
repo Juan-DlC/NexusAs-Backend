@@ -65,6 +65,7 @@ namespace NexusAs.Application.Services
                 PartnerName = user?.FullName ?? "",
                 Username = user?.Username ?? "",
                 CommissionPercent = config.CommissionPercent,
+                AllianceCommissionPercent = config.AllianceCommissionPercent,
                 IsActive = config.IsActive,
                 Notes = config.Notes
             };
@@ -109,17 +110,22 @@ namespace NexusAs.Application.Services
         }
 
         public async Task<PartnerConfigDto> UpdateCommissionAsync(
-            int partnerConfigId, decimal newCommission)
+            int partnerConfigId, UpdatePartnerCommissionDto dto)
         {
             var config = await _unitOfWork.PartnerConfigs.GetByIdAsync(partnerConfigId);
             if (config == null)
                 throw new NotFoundException("PartnerConfig", partnerConfigId);
 
-            if (newCommission <= 0 || newCommission > 100)
+            if (dto.CommissionPercent <= 0 || dto.CommissionPercent > 100)
                 throw new BusinessException(
                     "El porcentaje de comisión debe estar entre 1 y 100.");
 
-            config.CommissionPercent = newCommission;
+            if (dto.AllianceCommissionPercent < 0 || dto.AllianceCommissionPercent > 100)
+                throw new BusinessException(
+                    "El porcentaje de comisión de alianza debe estar entre 0 y 100.");
+
+            config.CommissionPercent = dto.CommissionPercent;
+            config.AllianceCommissionPercent = dto.AllianceCommissionPercent;
             _unitOfWork.PartnerConfigs.Update(config);
             await _unitOfWork.SaveChangesAsync();
 
@@ -328,16 +334,21 @@ namespace NexusAs.Application.Services
             foreach (var product in products)
             {
                 decimal partnerPrice;
+                decimal commissionPercent;
 
+                // Determinar porcentaje según tipo de producto
                 if (product.IsPartnership)
                 {
-                    partnerPrice = product.SalePrice;
+                    commissionPercent = partnerConfig.AllianceCommissionPercent;
                 }
                 else
                 {
-                    var gainAS = product.SalePrice - product.Cost;
-                    partnerPrice = product.Cost + (gainAS * partnerConfig.CommissionPercent / 100);
+                    commissionPercent = partnerConfig.CommissionPercent;
                 }
+
+                // Calcular precio para la socia (mismo cálculo para ambos tipos)
+                var gainAS = product.SalePrice - product.Cost;
+                partnerPrice = product.Cost + (gainAS * commissionPercent / 100);
 
                 result.Add(new PartnerProductViewDto
                 {

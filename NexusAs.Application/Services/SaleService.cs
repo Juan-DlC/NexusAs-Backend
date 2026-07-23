@@ -184,19 +184,21 @@ namespace NexusAs.Application.Services
                             .GetByIdAsync(detailDto.ProductId);
                         decimal partnerPrice;
                         decimal commissionPercent;
+                        
+                        // Determinar porcentaje según tipo de producto
                         if (product!.IsPartnership)
                         {
-                            // Producto de alianza: se entrega al precio de venta completo, sin descuento
-                            partnerPrice = product.SalePrice;
-                            commissionPercent = 0;
+                            commissionPercent = partnerConfig.AllianceCommissionPercent;
                         }
                         else
                         {
-                            // Producto normal: precio = costo + (ganancia AS * % comisión / 100)
                             commissionPercent = partnerConfig.CommissionPercent;
-                            var gainAS = product.SalePrice - product.Cost;
-                            partnerPrice = product.Cost + (gainAS * commissionPercent / 100);
                         }
+
+                        // Calcular precio para la socia (mismo cálculo para ambos tipos)
+                        var gainAS = product.SalePrice - product.Cost;
+                        partnerPrice = product.Cost + (gainAS * commissionPercent / 100);
+
                         var partnerEarning = Math.Max(0, detailDto.UnitPrice - partnerPrice);
                         var asEarning = partnerPrice - product.Cost;
                         var partnerSale = new PartnerSale

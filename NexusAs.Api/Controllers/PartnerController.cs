@@ -67,11 +67,11 @@ namespace NexusAs.Api.Controllers
         [HttpPatch("{id}/commission")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateCommission(
-            int id, [FromQuery] decimal commission)
+            int id, [FromBody] UpdatePartnerCommissionDto dto)
         {
-            var partner = await _partnerService.UpdateCommissionAsync(id, commission);
+            var partner = await _partnerService.UpdateCommissionAsync(id, dto);
             return Ok(ApiResponse<PartnerConfigDto>.Success(
-                partner, "Comisión actualizada exitosamente."));
+                partner, "Comisiones actualizadas exitosamente."));
         }
 
         [HttpPost("{id}/product-prices")]

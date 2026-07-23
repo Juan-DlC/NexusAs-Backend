@@ -8,7 +8,7 @@ namespace NexusAs.Application.Interfaces
         Task<IEnumerable<PartnerConfigDto>> GetAllPartnersAsync();
         Task<PartnerConfigDto?> GetPartnerByIdAsync(int partnerConfigId);
         Task<PartnerConfigDto> CreatePartnerConfigAsync(CreatePartnerConfigDto dto);
-        Task<PartnerConfigDto> UpdateCommissionAsync(int partnerConfigId, decimal newCommission);
+        Task<PartnerConfigDto> UpdateCommissionAsync(int partnerConfigId, UpdatePartnerCommissionDto dto);
         Task<PartnerProductPriceDto> SetProductPriceAsync(int partnerConfigId, SetPartnerProductPriceDto dto);
         Task<IEnumerable<PartnerProductPriceDto>> GetProductPricesAsync(int partnerConfigId);
         Task<PartnerSummaryDto> GetPartnerSummaryAsync(int partnerConfigId);
