@@ -21,10 +21,10 @@ namespace NexusAs.Application.Services
         public async Task<PagedResponseDto<ProductDto>> GetAllAsync(
             int pageNumber, int pageSize, string? search = null,
             int? categoryId = null, bool? isPartnership = null,
-            bool? inStock = null, bool includeInactive = false)
+            bool? inStock = null, bool? isActiveFilter = null)
         {
             var (products, totalRecords) = await _unitOfWork.Products.GetAllPagedAsync(
-                search, categoryId, isPartnership, pageNumber, pageSize, inStock, includeInactive);
+                search, categoryId, isPartnership, pageNumber, pageSize, inStock, isActiveFilter);
 
             return new PagedResponseDto<ProductDto>
             {
@@ -102,7 +102,7 @@ namespace NexusAs.Application.Services
 
         public async Task<ProductDto> ToggleStatusAsync(int id)
         {
-            var product = await _unitOfWork.Products.GetByIdAsync(id);
+            var product = await _unitOfWork.Products.GetByIdIncludingInactiveAsync(id);
             if (product == null)
                 throw new NotFoundException(nameof(Product), id);
 

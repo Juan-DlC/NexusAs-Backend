@@ -7,10 +7,8 @@ namespace NexusAs.Application.Validators
     {
         public CreateSaleValidator()
         {
-            RuleFor(x => x.PaymentMethod)
-                .NotEmpty().WithMessage("El método de pago es obligatorio.")
-                .Must(x => x == "Cash" || x == "Credit")
-                .WithMessage("El método de pago debe ser 'Cash' o 'Credit'.");
+            RuleFor(x => x.PaymentMethodId)
+                .GreaterThan(0).WithMessage("Debe seleccionar un método de pago válido.");
 
             RuleFor(x => x.Discount)
                 .GreaterThanOrEqualTo(0).WithMessage("El descuento no puede ser negativo.");

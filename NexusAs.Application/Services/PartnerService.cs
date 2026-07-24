@@ -4,6 +4,7 @@ using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Entities;
 using NexusAs.Domain.Enums;
 using NexusAs.Domain.Exceptions;
+using NexusAs.Application.DTOs.Common;
 
 namespace NexusAs.Application.Services
 {
@@ -278,6 +279,14 @@ namespace NexusAs.Application.Services
             if (!Enum.TryParse<LiquidationType>(dto.Type, out var type))
                 throw new BusinessException("Tipo inválido. Use: Payment o Earning.");
 
+            // Validar SaleId si se proporciona
+            if (dto.SaleId.HasValue)
+            {
+                var sale = await _unitOfWork.Sales.GetByIdAsync(dto.SaleId.Value);
+                if (sale == null)
+                    throw new NotFoundException("Sale", dto.SaleId.Value);
+            }
+
             var liquidation = new PartnerLiquidation
             {
                 PartnerConfigId = partnerConfigId,
@@ -286,7 +295,8 @@ namespace NexusAs.Application.Services
                 Date = DateTime.Now,
                 Notes = dto.Notes,
                 PeriodFrom = dto.PeriodFrom,
-                PeriodTo = dto.PeriodTo
+                PeriodTo = dto.PeriodTo,
+                SaleId = dto.SaleId
             };
 
             await _unitOfWork.PartnerLiquidations.AddAsync(liquidation);
@@ -391,6 +401,84 @@ namespace NexusAs.Application.Services
         {
             return await _partnerReportService
                 .GeneratePartnerStatementPdfAsync(partnerConfigId, from, to);
+        }
+
+        public async Task<PartnerAdminSummaryDto> GetAdminSummaryAsync(int partnerConfigId)
+        {
+            var config = await _unitOfWork.PartnerConfigs.GetByIdAsync(partnerConfigId);
+            if (config == null)
+                throw new NotFoundException("PartnerConfig", partnerConfigId);
+
+            var user = await _unitOfWork.Users.GetByIdAsync(config.UserId);
+            
+            var sales = await _unitOfWork.PartnerSales
+                .FindAsync(ps => ps.PartnerConfigId == partnerConfigId);
+            
+            var liquidations = await _unitOfWork.PartnerLiquidations
+                .FindAsync(pl => pl.PartnerConfigId == partnerConfigId);
+
+            var totalDebt = sales.Sum(s => s.PartnerPrice * s.Quantity);
+            var totalPaid = liquidations
+                .Where(l => l.Type == LiquidationType.Payment)
+                .Sum(l => l.Amount);
+
+            var invoiceCount = sales.Select(s => s.SaleId).Distinct().Count();
+
+            return new PartnerAdminSummaryDto
+            {
+                PartnerId = partnerConfigId,
+                PartnerName = user?.FullName ?? "",
+                TotalDebt = totalDebt,
+                TotalPaid = totalPaid,
+                PendingDebt = totalDebt - totalPaid,
+                InvoiceCount = invoiceCount,
+                CommissionPercent = config.CommissionPercent,
+                AllianceCommissionPercent = config.AllianceCommissionPercent
+            };
+        }
+
+        public async Task<PagedResponseDto<PartnerInvoiceDto>> GetPartnerInvoicesAsync(
+            int partnerConfigId, int pageNumber, int pageSize)
+        {
+            var config = await _unitOfWork.PartnerConfigs.GetByIdAsync(partnerConfigId);
+            if (config == null)
+                throw new NotFoundException("PartnerConfig", partnerConfigId);
+
+            // Obtener ventas del usuario de la socia (no Admin, por eso pasamos el userId)
+            var (sales, totalRecords) = await _unitOfWork.Sales.GetSalesWithDetailsAsync(
+                config.UserId, "Partner", null, null, null, pageNumber, pageSize);
+
+            var invoices = new List<PartnerInvoiceDto>();
+            foreach (var sale in sales)
+            {
+                var creditStatus = "NoCredit";
+                decimal pendingAmount = 0;
+
+                if (sale.Credit != null)
+                {
+                    creditStatus = sale.Credit.Status.ToString();
+                    pendingAmount = sale.Credit.PendingAmount;
+                }
+
+                invoices.Add(new PartnerInvoiceDto
+                {
+                    SaleId = sale.Id,
+                    SaleNumber = sale.SaleNumber,
+                    Date = sale.Date,
+                    Total = sale.Total,
+                    PaymentMethodName = sale.PaymentMethodEntity?.Name ?? "",
+                    CreditStatus = creditStatus,
+                    PendingAmount = pendingAmount
+                });
+            }
+
+            return new PagedResponseDto<PartnerInvoiceDto>
+            {
+                Data = invoices,
+                TotalRecords = totalRecords,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
     }
 }

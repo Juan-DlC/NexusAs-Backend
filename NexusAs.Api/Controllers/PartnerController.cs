@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using NexusAs.Api.Responses;
 using NexusAs.Application.DTOs.Partners;
+using NexusAs.Application.DTOs.Common;
 using NexusAs.Application.Interfaces;
 using System.Security.Claims;
 
@@ -98,6 +99,25 @@ namespace NexusAs.Api.Controllers
         {
             var summary = await _partnerService.GetPartnerSummaryAsync(id);
             return Ok(ApiResponse<PartnerSummaryDto>.Success(summary));
+        }
+
+        [HttpGet("{id}/admin-summary")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAdminSummary(int id)
+        {
+            var summary = await _partnerService.GetAdminSummaryAsync(id);
+            return Ok(ApiResponse<PartnerAdminSummaryDto>.Success(summary));
+        }
+
+        [HttpGet("{id}/invoices")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetPartnerInvoices(
+            int id,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var invoices = await _partnerService.GetPartnerInvoicesAsync(id, pageNumber, pageSize);
+            return Ok(ApiResponse<PagedResponseDto<PartnerInvoiceDto>>.Success(invoices));
         }
 
         [HttpGet("{id}/sales")]

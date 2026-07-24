@@ -27,10 +27,10 @@ namespace NexusAs.Api.Controllers
             [FromQuery] int? categoryId = null,
             [FromQuery] bool? isPartnership = null,
             [FromQuery] bool? inStock = null,
-            [FromQuery] bool includeInactive = false)
+            [FromQuery] bool? isActive = null)
         {
             var products = await _productService.GetAllAsync(
-                pageNumber, pageSize, search, categoryId, isPartnership, inStock, includeInactive);
+                pageNumber, pageSize, search, categoryId, isPartnership, inStock, isActive);
             return Ok(ApiResponse<PagedResponseDto<ProductDto>>.Success(products));
         }
 

@@ -116,16 +116,17 @@ namespace NexusAs.Infrastructure.Services
                         {
                             table.ColumnsDefinition(c =>
                             {
-                                c.RelativeColumn(3);
-                                c.RelativeColumn(1);
-                                c.RelativeColumn(2);
-                                c.RelativeColumn(2);
+                                c.ConstantColumn(60);  // Código
+                                c.RelativeColumn(3);   // Producto
+                                c.RelativeColumn(1);   // Cant.
+                                c.RelativeColumn(2);   // Precio Unit.
+                                c.RelativeColumn(2);   // Subtotal
                             });
 
                             table.Header(header =>
                             {
                                 foreach (var title in new[]
-                                    { "Producto", "Cant.", "Precio Unit.", "Subtotal" })
+                                    { "Código", "Producto", "Cant.", "Precio Unit.", "Subtotal" })
                                 {
                                     header.Cell().Background(_reportStyle.ColorPrincipal)
                                         .Padding(4).Text(title)
@@ -138,8 +139,18 @@ namespace NexusAs.Infrastructure.Services
                             {
                                 var bg = details.IndexOf(detail) % 2 == 0
                                      ? "#FFFFFF" : _reportStyle.ColorFondoSuave;
+                                
                                 table.Cell().Background(bg).Padding(4)
-                                    .Text(detail.Product?.Name ?? "").FontSize(9);
+                                    .Text(detail.Product?.Code ?? "").FontSize(9);
+                                
+                                table.Cell().Background(bg).Padding(4).Column(col =>
+                                {
+                                    col.Item().Text(detail.Product?.Name ?? "").FontSize(9);
+                                    if (!string.IsNullOrEmpty(detail.Product?.Description))
+                                        col.Item().Text(detail.Product.Description)
+                                            .FontSize(7).Italic().FontColor("#888888");
+                                });
+                                
                                 table.Cell().Background(bg).Padding(4)
                                     .Text(detail.Quantity.ToString()).FontSize(9);
                                 table.Cell().Background(bg).Padding(4)

@@ -13,11 +13,11 @@ namespace NexusAs.Infrastructure.Repositories
 
         public async Task<(IEnumerable<Product> Items, int TotalRecords)> GetAllPagedAsync(
             string? search, int? categoryId, bool? isPartnership,
-            int pageNumber, int pageSize, bool? inStock = null, bool includeInactive = false)
+            int pageNumber, int pageSize, bool? inStock = null, bool? isActiveFilter = null)
         {
             var query = _context.Products
                 .Include(p => p.Category)
-                .Where(p => includeInactive || p.IsActive);
+                .Where(p => isActiveFilter == null ? p.IsActive : p.IsActive == isActiveFilter);
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -58,6 +58,13 @@ namespace NexusAs.Infrastructure.Repositories
             return await _context.Products.AnyAsync(p =>
                 p.Code == code && p.IsActive &&
                 (excludeId == null || p.Id != excludeId.Value));
+        }
+
+        public async Task<Product?> GetByIdIncludingInactiveAsync(int id)
+        {
+            return await _context.Products
+                .Include(p => p.Category)
+                .FirstOrDefaultAsync(p => p.Id == id);
         }
     }
 }

@@ -32,21 +32,34 @@ namespace NexusAs.Infrastructure.Services
             if (config == null)
                 throw new Exception($"Configuración de socia {partnerConfigId} no encontrada.");
 
+            // Ventas del período (para el detalle)
             var sales = await _context.PartnerSales
                 .Include(ps => ps.Product)
                 .Include(ps => ps.Sale)
                 .Where(ps => ps.PartnerConfigId == partnerConfigId
-                    && ps.Date >= from && ps.Date <= to)
+                    && ps.Date >= from && ps.Date <= to && ps.IsActive)
+                .OrderByDescending(ps => ps.Date)
                 .ToListAsync();
 
+            // Liquidaciones del período (para el detalle)
             var liquidations = await _context.PartnerLiquidations
                 .Where(pl => pl.PartnerConfigId == partnerConfigId
-                    && pl.Date >= from && pl.Date <= to)
+                    && pl.Date >= from && pl.Date <= to && pl.IsActive)
+                .OrderBy(pl => pl.Date)
                 .ToListAsync();
 
-            var totalDebt = sales.Sum(s => s.PartnerPrice * s.Quantity);
-            var totalPaid = liquidations
-                .Where(l => l.Type == Domain.Enums.LiquidationType.Payment)
+            // Totales GENERALES (sin filtro de fecha)
+            var allSales = await _context.PartnerSales
+                .Where(ps => ps.PartnerConfigId == partnerConfigId && ps.IsActive)
+                .ToListAsync();
+            
+            var allLiquidations = await _context.PartnerLiquidations
+                .Where(pl => pl.PartnerConfigId == partnerConfigId && pl.IsActive)
+                .ToListAsync();
+
+            var totalDebt = allSales.Sum(s => s.PartnerPrice * s.Quantity);
+            var totalPaid = allLiquidations
+                .Where(l => l.Type == LiquidationType.Payment)
                 .Sum(l => l.Amount);
             var totalEarnings = sales.Sum(s => s.PartnerEarning);
 

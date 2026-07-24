@@ -1,5 +1,5 @@
 ﻿using NexusAs.Application.DTOs.Partners;
-
+using NexusAs.Application.DTOs.Common;
 
 namespace NexusAs.Application.Interfaces
 {
@@ -18,5 +18,7 @@ namespace NexusAs.Application.Interfaces
         Task<AllianceReportDto> GetAllianceReportAsync(DateTime from, DateTime to);
         Task<byte[]> GeneratePartnerStatementAsync(int partnerConfigId, DateTime from, DateTime to);
         Task<IEnumerable<PartnerProductViewDto>> GetMyProductsAsync(int partnerConfigId);
+        Task<PartnerAdminSummaryDto> GetAdminSummaryAsync(int partnerConfigId);
+        Task<PagedResponseDto<PartnerInvoiceDto>> GetPartnerInvoicesAsync(int partnerConfigId, int pageNumber, int pageSize);
     }
 }

@@ -7,5 +7,6 @@
         public string? Notes { get; set; }
         public DateTime PeriodFrom { get; set; }
         public DateTime PeriodTo { get; set; }
+        public int? SaleId { get; set; }
     }
 }
