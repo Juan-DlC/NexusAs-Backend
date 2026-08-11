@@ -9,5 +9,6 @@ namespace NexusAs.Application.Interfaces
             int pageNumber, int pageSize, DateTime? from = null, DateTime? to = null);
         Task<ReturnDto?> GetByIdAsync(int id);
         Task<ReturnDto> CreateAsync(CreateReturnDto dto, int userId);
+        Task<IEnumerable<ReturnDto>> GetBySaleIdAsync(int saleId);
     }
 }

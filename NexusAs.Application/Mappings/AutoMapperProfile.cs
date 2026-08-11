@@ -10,6 +10,7 @@ using NexusAs.Application.DTOs.Users;
 using NexusAs.Application.DTOs.Suppliers;
 using NexusAs.Application.DTOs.PaymentMethods;
 using NexusAs.Application.DTOs.Returns;
+using NexusAs.Application.DTOs.Partners;
 
 namespace NexusAs.Application.Mappings
 {
@@ -21,6 +22,12 @@ namespace NexusAs.Application.Mappings
             CreateMap<Category, CategoryDto>();
             CreateMap<CreateCategoryDto, Category>();
             CreateMap<UpdateCategoryDto, Category>();
+
+            // PASO 1: PartnerConfig mappings con mapeo explícito de UserId
+            CreateMap<PartnerConfig, PartnerConfigDto>()
+                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
+                .ForMember(dest => dest.PartnerName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : string.Empty))
+                .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.User != null ? src.User.Username : string.Empty));
 
             // Supplier mappings
             CreateMap<Supplier, SupplierDto>();
@@ -35,9 +42,18 @@ namespace NexusAs.Application.Mappings
                 .ForMember(dest => dest.CategoryName,
                     opt => opt.MapFrom(src => src.Category != null
                         ? src.Category.Name
-                        : string.Empty));
-            CreateMap<CreateProductDto, Product>();
-            CreateMap<UpdateProductDto, Product>();
+                        : string.Empty))
+                .ForMember(dest => dest.SupplierName,
+                    opt => opt.MapFrom(src => src.Supplier != null
+                        ? src.Supplier.Name
+                        : null));
+            
+            // TAREA 5: Mapeo explícito de SupplierId para Create y Update
+            CreateMap<CreateProductDto, Product>()
+                .ForMember(dest => dest.SupplierId, opt => opt.MapFrom(src => src.SupplierId));
+            
+            CreateMap<UpdateProductDto, Product>()
+                .ForMember(dest => dest.SupplierId, opt => opt.MapFrom(src => src.SupplierId));
 
             // Customer mappings
             CreateMap<Customer, CustomerDto>();
@@ -45,7 +61,7 @@ namespace NexusAs.Application.Mappings
             CreateMap<UpdateCustomerDto, Customer>();
 
             CreateMap<Sale, SaleDto>()
-            .ForMember(dest => dest.PaymentMethod,
+            .ForMember(dest => dest.PaymentMethodName,
                 opt => opt.MapFrom(src => src.PaymentMethodEntity != null
                     ? src.PaymentMethodEntity.Name : string.Empty))
             .ForMember(dest => dest.CustomerName,
@@ -54,10 +70,17 @@ namespace NexusAs.Application.Mappings
             .ForMember(dest => dest.SellerName,
                 opt => opt.MapFrom(src => src.User != null
                     ? src.User.FullName : string.Empty))
+            .ForMember(dest => dest.Status,
+                opt => opt.MapFrom(src => src.Status.ToString()))
             .ForMember(dest => dest.Details,
-                opt => opt.MapFrom(src => src.SaleDetails));
+                opt => opt.MapFrom(src => src.SaleDetails))
+            .ForMember(dest => dest.Returns,
+                opt => opt.MapFrom(src => src.Returns.Where(r => r.IsActive)));
 
                     CreateMap<SaleDetail, SaleDetailDto>()
+                        .ForMember(dest => dest.ProductCode,
+                            opt => opt.MapFrom(src => src.Product != null
+                                ? src.Product.Code : string.Empty))
                         .ForMember(dest => dest.ProductName,
                             opt => opt.MapFrom(src => src.Product != null
                                 ? src.Product.Name : string.Empty));

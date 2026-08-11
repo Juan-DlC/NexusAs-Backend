@@ -63,6 +63,14 @@ namespace NexusAs.Infrastructure.Services
                 .Sum(l => l.Amount);
             var totalEarnings = sales.Sum(s => s.PartnerEarning);
 
+            // Facturas con saldo pendiente (para la nueva sección)
+            var salesWithPendingDebt = await _context.Sales
+                .Include(s => s.Credit)
+                .Where(s => s.UserId == config.UserId && s.IsActive)
+                .Where(s => s.Credit == null || s.Credit.Status != CreditStatus.Paid)
+                .OrderByDescending(s => s.Date)
+                .ToListAsync();
+
             var logoBytes = File.Exists(_reportStyle.LogoPath)
                 ? File.ReadAllBytes(_reportStyle.LogoPath) : null;
 
@@ -120,14 +128,88 @@ namespace NexusAs.Infrastructure.Services
                                 table.Cell().Text("Saldo pendiente:").Bold().FontColor(_reportStyle.ColorAlerta);
                                 table.Cell().AlignRight()
                                     .Text($"${totalDebt - totalPaid:N0}").Bold().FontColor(_reportStyle.ColorAlerta);
-                                table.Cell().Text("Mis ganancias estimadas:").Bold();
-                                table.Cell().AlignRight().Text($"${totalEarnings:N0}");
                             });
                         });
 
+                        // Facturas con saldo pendiente
+                        col.Item().PaddingTop(12)
+                            .Text("Facturas con saldo pendiente").FontSize(12).Bold();
+                        
+                        if (salesWithPendingDebt.Any())
+                        {
+                            col.Item().PaddingTop(4).Table(table =>
+                            {
+                                table.ColumnsDefinition(c =>
+                                {
+                                    c.RelativeColumn(2); // Factura
+                                    c.RelativeColumn(2); // Fecha
+                                    c.RelativeColumn(2); // Total
+                                    c.RelativeColumn(2); // Abonado
+                                    c.RelativeColumn(2); // Pendiente
+                                });
+                                table.Header(header =>
+                                {
+                                    foreach (var title in new[]
+                                        { "Factura", "Fecha", "Total", "Abonado", "Pendiente" })
+                                    {
+                                        header.Cell().Background(_reportStyle.ColorPrincipal)
+                                            .Padding(4).Text(title)
+                                            .FontColor(Colors.White).Bold().FontSize(9);
+                                    }
+                                });
+                                
+                                decimal totalFacturas = 0;
+                                decimal totalAbonado = 0;
+                                decimal totalPendiente = 0;
+
+                                foreach (var saleWithDebt in salesWithPendingDebt)
+                                {
+                                    var paidAmount = saleWithDebt.Credit?.PaidAmount ?? 0;
+                                    var pendingAmount = saleWithDebt.Total - paidAmount;
+                                    
+                                    totalFacturas += saleWithDebt.Total;
+                                    totalAbonado += paidAmount;
+                                    totalPendiente += pendingAmount;
+
+                                    var bg = salesWithPendingDebt.IndexOf(saleWithDebt) % 2 == 0
+                                        ? "#FFFFFF" : _reportStyle.ColorFondoSuave;
+                                    
+                                    table.Cell().Background(bg).Padding(4)
+                                        .Text(saleWithDebt.SaleNumber).FontSize(9);
+                                    table.Cell().Background(bg).Padding(4)
+                                        .Text(saleWithDebt.Date.ToString("dd/MM/yyyy")).FontSize(9);
+                                    table.Cell().Background(bg).Padding(4)
+                                        .Text($"${saleWithDebt.Total:N0}").FontSize(9);
+                                    table.Cell().Background(bg).Padding(4)
+                                        .Text($"${paidAmount:N0}")
+                                        .FontSize(9).FontColor(_reportStyle.ColorExito);
+                                    table.Cell().Background(bg).Padding(4)
+                                        .Text($"${pendingAmount:N0}")
+                                        .FontSize(9).FontColor(_reportStyle.ColorAlerta);
+                                }
+
+                                // Fila de totales
+                                table.Cell().Background(_reportStyle.ColorPrincipal).Padding(4)
+                                    .Text("TOTAL").FontColor(Colors.White).Bold().FontSize(9);
+                                table.Cell().Background(_reportStyle.ColorPrincipal).Padding(4)
+                                    .Text("").FontSize(9);
+                                table.Cell().Background(_reportStyle.ColorPrincipal).Padding(4)
+                                    .Text($"${totalFacturas:N0}").FontColor(Colors.White).Bold().FontSize(9);
+                                table.Cell().Background(_reportStyle.ColorPrincipal).Padding(4)
+                                    .Text($"${totalAbonado:N0}").FontColor(Colors.White).Bold().FontSize(9);
+                                table.Cell().Background(_reportStyle.ColorPrincipal).Padding(4)
+                                    .Text($"${totalPendiente:N0}").FontColor(Colors.White).Bold().FontSize(9);
+                            });
+                        }
+                        else
+                        {
+                            col.Item().PaddingTop(4).Text("No hay facturas con saldo pendiente.")
+                                .FontSize(10).Italic().FontColor(_reportStyle.ColorAcento);
+                        }
+
                         // Productos tomados
                         col.Item().PaddingTop(12)
-                            .Text("Productos Tomados").FontSize(12).Bold();
+                            .Text("Productos Tomados (Período)").FontSize(12).Bold();
                         col.Item().PaddingTop(4).Table(table =>
                         {
                             table.ColumnsDefinition(c =>
@@ -162,44 +244,6 @@ namespace NexusAs.Infrastructure.Services
                                     .Text($"${sale.PartnerPrice * sale.Quantity:N0}").FontSize(9);
                                 table.Cell().Background(bg).Padding(4)
                                     .Text(sale.Sale?.SaleNumber ?? "").FontSize(9);
-                            }
-                        });
-
-                        // Mis ganancias
-                        col.Item().PaddingTop(12)
-                            .Text("Mis Ganancias Estimadas").FontSize(12).Bold();
-                        col.Item().PaddingTop(4).Table(table =>
-                        {
-                            table.ColumnsDefinition(c =>
-                            {
-                                c.RelativeColumn(3);
-                                c.RelativeColumn(2);
-                                c.RelativeColumn(2);
-                                c.RelativeColumn(2);
-                            });
-                            table.Header(header =>
-                            {
-                                foreach (var title in new[]
-                                    { "Producto", "Precio AS", "Precio Sugerido", "Ganancia Est." })
-                                {
-                                    header.Cell().Background(_reportStyle.ColorPrincipal)
-                                        .Padding(4).Text(title)
-                                        .FontColor(Colors.White).Bold().FontSize(9);
-                                }
-                            });
-                            foreach (var sale in sales)
-                            {
-                                var bg = sales.IndexOf(sale) % 2 == 0
-                                    ? "#FFFFFF" : _reportStyle.ColorFondoSuave;
-                                table.Cell().Background(bg).Padding(4)
-                                    .Text(sale.Product?.Name ?? "").FontSize(9);
-                                table.Cell().Background(bg).Padding(4)
-                                    .Text($"${sale.PartnerPrice:N0}").FontSize(9);
-                                table.Cell().Background(bg).Padding(4)
-                                    .Text($"${sale.SalePrice:N0}").FontSize(9);
-                                table.Cell().Background(bg).Padding(4)
-                                    .Text($"${sale.PartnerEarning:N0}")
-                                    .FontSize(9).FontColor(_reportStyle.ColorExito);
                             }
                         });
 
@@ -239,20 +283,6 @@ namespace NexusAs.Infrastructure.Services
                                 }
                             });
                         }
-
-                        // Nota
-                        col.Item().PaddingTop(12)
-                            .Border(1).BorderColor(_reportStyle.ColorAcento)
-                            .Padding(6).Column(noteCol =>
-                            {
-                                noteCol.Item().Text("NOTA:")
-                                    .Bold().FontSize(8).FontColor(_reportStyle.ColorPrincipal);
-                                noteCol.Item().Text(
-                                    "Las ganancias mostradas son estimadas basadas en el precio " +
-                                    "sugerido de venta. El valor real depende del precio al que " +
-                                    "cada producto fue vendido por la socia.")
-                                    .FontSize(8).FontColor(_reportStyle.ColorPrincipal).Italic();
-                            });
                     });
 
                     page.Footer().Column(col =>

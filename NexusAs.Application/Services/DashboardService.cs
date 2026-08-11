@@ -22,10 +22,7 @@ namespace NexusAs.Application.Services
             var today = DateTime.UtcNow.Date;
             var tomorrow = today.AddDays(1);
 
-            var todaySales = await _unitOfWork.Sales.FindAsync(s =>
-                s.IsActive && s.Date >= today && s.Date < tomorrow);
-
-            var salesList = todaySales.ToList();
+            var salesList = await _unitOfWork.Sales.GetTodaySalesAsync(today, tomorrow);
 
             var pendingCredits = await _unitOfWork.Credits.FindAsync(c =>
                 c.IsActive && c.Status != CreditStatus.Paid);
@@ -42,7 +39,7 @@ namespace NexusAs.Application.Services
                 TodayCredit = salesList
                     .Where(s => s.PaymentMethodEntity != null && s.PaymentMethodEntity.Code == "CREDIT")
                     .Sum(s => s.Total),
-                TodayTransactions = salesList.Count,
+                TodayTransactions = salesList.Count(),
                 PendingCredits = pendingCredits.Count(),
                 PendingCreditsAmount = pendingCredits.Sum(c => c.PendingAmount),
                 LowStockProducts = _mapper.Map<IEnumerable<ProductDto>>(lowStockProducts)

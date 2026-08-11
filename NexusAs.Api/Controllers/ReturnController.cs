@@ -57,10 +57,21 @@ namespace NexusAs.Api.Controllers
             if (!int.TryParse(userIdClaim, out int userId))
                 return Unauthorized(ApiResponse<string>.Fail("Usuario no autenticado."));
 
-            var returnEntity = await _returnService.CreateAsync(dto, userId);
+                var returnEntity = await _returnService.CreateAsync(dto, userId);
             return CreatedAtAction(nameof(GetById),
                 new { id = returnEntity.Id },
                 ApiResponse<ReturnDto>.Success(returnEntity, "Devolución procesada exitosamente."));
+        }
+
+        /// <summary>
+        /// Obtiene todas las devoluciones de una venta específica
+        /// </summary>
+        [HttpGet("by-sale/{saleId}")]
+        [Authorize]
+        public async Task<IActionResult> GetBySaleId(int saleId)
+        {
+            var returns = await _returnService.GetBySaleIdAsync(saleId);
+            return Ok(ApiResponse<IEnumerable<ReturnDto>>.Success(returns));
         }
     }
 }

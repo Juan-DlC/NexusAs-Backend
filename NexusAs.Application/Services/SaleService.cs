@@ -69,20 +69,75 @@ namespace NexusAs.Application.Services
                     throw new NotFoundException(nameof(Product), detail.ProductId);
                 if (product.Stock < detail.Quantity)
                     throw new BusinessException(
-                        $"Stock insuficiente para '{product.Name}'. " +
+                        $"Stock insuficiente para '{product.Name}'. " + 
                         $"Disponible: {product.Stock}, Solicitado: {detail.Quantity}.");
             }
-            //Generar número de factura
-            var salesCount = (await _unitOfWork.Sales.GetAllAsync()).Count();
-            var saleNumber = $"FAC-{(salesCount + 1):D4}";
+
+            // TAREA 2: Calcular automáticamente precio de socia si UnitPrice es 0
+            if (dto.PartnerUserId.HasValue)
+            {
+                var partnerConfig = (await _unitOfWork.PartnerConfigs
+                    .FindAsync(pc => pc.UserId == dto.PartnerUserId.Value && pc.IsActive))
+                    .FirstOrDefault();
+
+                if (partnerConfig != null)
+                {
+                    foreach (var detailDto in dto.Details)
+                    {
+                        if (detailDto.UnitPrice <= 0)
+                        {
+                            var product = await _unitOfWork.Products.GetByIdAsync(detailDto.ProductId);
+                            if (product != null)
+                            {
+                                var gainAS = product.SalePrice - product.Cost;
+                                var commissionPercent = product.IsPartnership
+                                    ? partnerConfig.AllianceCommissionPercent
+                                    : partnerConfig.CommissionPercent;
+                                
+                                detailDto.UnitPrice = product.Cost + (gainAS * commissionPercent / 100);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Determinar el UserId final (socia o usuario actual)
+            int finalUserId = dto.PartnerUserId ?? userId;
+
+            // PASO 4: Validar que el userId existe en la tabla Users
+            var userExists = await _unitOfWork.Users.GetByIdAsync(finalUserId);
+            if (userExists == null)
+            {
+                throw new BusinessException($"El usuario con Id {finalUserId} no existe en el sistema. Verifique que la socia esté correctamente registrada.");
+            }
+
+            // TAREA 1: Validación explícita de PaymentMethodId ANTES de crear la venta
+            if (dto.PaymentMethodId <= 0)
+                throw new BusinessException("Debe seleccionar un método de pago válido.");
+
+            var paymentMethod = await _unitOfWork.PaymentMethods.GetByIdAsync(dto.PaymentMethodId);
+            if (paymentMethod == null)
+                throw new BusinessException($"El método de pago seleccionado no existe.");
+
+            // Generar número de factura - FIX: usar MAX en lugar de COUNT para evitar duplicados
+            var allSales = await _unitOfWork.Sales.FindAsync(s => s.SaleNumber.StartsWith("FAC-"));
+            int nextNumber = 1;
+            if (allSales.Any())
+            {
+                var maxNumber = allSales
+                    .Select(s => {
+                        var numberPart = s.SaleNumber.Replace("FAC-", "");
+                        return int.TryParse(numberPart, out int num) ? num : 0;
+                    })
+                    .DefaultIfEmpty(0)
+                    .Max();
+                nextNumber = maxNumber + 1;
+            }
+            var saleNumber = $"FAC-{nextNumber:D4}";
+            
             //Calcular totales
             var subtotal = dto.Details.Sum(d => d.Quantity * d.UnitPrice);
             var total = subtotal - dto.Discount;
-            
-            //Validar método de pago
-            var paymentMethod = await _unitOfWork.PaymentMethods.GetByIdAsync(dto.PaymentMethodId);
-            if (paymentMethod == null)
-                throw new BusinessException($"Método de pago con ID {dto.PaymentMethodId} no existe.");
 
             //Crear la venta
             var sale = new Sale
@@ -95,7 +150,7 @@ namespace NexusAs.Application.Services
                 PaymentMethodId = dto.PaymentMethodId,
                 Notes = dto.Notes,
                 CustomerId = dto.CustomerId,
-                UserId = userId
+                UserId = finalUserId
             };
             await _unitOfWork.Sales.AddAsync(sale);
             await _unitOfWork.SaveChangesAsync();
@@ -135,16 +190,20 @@ namespace NexusAs.Application.Services
             //Si es crédito, crear registro de crédito
             if (paymentMethod.Code == "CREDIT")
             {
-                if (dto.CustomerId == null)
+                // Validar CustomerId solo si NO es venta a socia
+                if (dto.CustomerId == null && dto.PartnerUserId == null)
                     throw new BusinessException(
                         "Las ventas a crédito requieren un cliente registrado.");
+
+                // Para ventas a socias, usar 1 cuota por defecto si no se especifica
                 var numberOfInstallments = dto.NumberOfInstallments ?? 1;
                 if (numberOfInstallments < 1)
                     numberOfInstallments = 1;
+
                 var credit = new Credit
                 {
                     SaleId = sale.Id,
-                    CustomerId = dto.CustomerId.Value,
+                    CustomerId = dto.CustomerId, // Puede ser null para ventas a socias
                     TotalAmount = total,
                     PaidAmount = 0,
                     PendingAmount = total,
@@ -168,11 +227,11 @@ namespace NexusAs.Application.Services
                 }
             }
             // Si el vendedor es Partner, registrar ganancias
-            var seller = await _unitOfWork.Users.GetByIdAsync(userId);
+            var seller = await _unitOfWork.Users.GetByIdAsync(finalUserId);
             if (seller?.Role == UserRole.Partner)
             {
                 var partnerConfig = (await _unitOfWork.PartnerConfigs
-                    .FindAsync(pc => pc.UserId == userId && pc.IsActive))
+                    .FindAsync(pc => pc.UserId == finalUserId && pc.IsActive))
                     .FirstOrDefault();
                 if (partnerConfig != null)
                 {

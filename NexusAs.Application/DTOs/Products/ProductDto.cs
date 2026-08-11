@@ -21,6 +21,8 @@ namespace NexusAs.Application.DTOs.Products
         public string? ImagePath { get; set; }
         public string CategoryName { get; set; } = string.Empty;
         public int CategoryId { get; set; }
+        public int? SupplierId { get; set; }
+        public string? SupplierName { get; set; }
         public bool IsPartnership { get; set; }
         public bool IsActive { get; set; }
     }

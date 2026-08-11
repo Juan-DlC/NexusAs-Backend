@@ -35,11 +35,13 @@ try
         app.UseSwaggerUI();
     }
 
+    // CORS debe ir temprano, antes de UseHttpsRedirection
+    app.UseCors("NexusAsPolicy");
+    
     app.UseStaticFiles();
     app.UseMiddleware<SecurityHeadersMiddleware>();
     app.UseSerilogRequestLogging();
     app.UseHttpsRedirection();
-    app.UseCors("NexusAsPolicy");
     app.UseHealthChecks("/health");
     app.UseAuthentication();
     app.UseAuthorization();
@@ -49,7 +51,7 @@ try
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "La aplicación falló al iniciar.");
+    Log.Fatal(ex, "La aplicaciï¿½n fallï¿½ al iniciar.");
 }
 finally
 {

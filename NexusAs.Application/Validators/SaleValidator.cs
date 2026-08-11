@@ -7,6 +7,7 @@ namespace NexusAs.Application.Validators
     {
         public CreateSaleValidator()
         {
+            // TAREA 2: Validación explícita de PaymentMethodId en FluentValidation
             RuleFor(x => x.PaymentMethodId)
                 .GreaterThan(0).WithMessage("Debe seleccionar un método de pago válido.");
 
@@ -23,7 +24,7 @@ namespace NexusAs.Application.Validators
                 detail.RuleFor(d => d.Quantity)
                     .GreaterThan(0).WithMessage("La cantidad debe ser mayor a 0.");
                 detail.RuleFor(d => d.UnitPrice)
-                    .GreaterThan(0).WithMessage("El precio unitario debe ser mayor a 0.");
+                    .GreaterThanOrEqualTo(0).WithMessage("El precio unitario no puede ser negativo.");
             });
         }
     }

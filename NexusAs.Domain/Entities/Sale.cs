@@ -21,6 +21,7 @@ namespace NexusAs.Domain.Entities
         public Customer? Customer { get; set; }
         public int UserId { get; set; }
         public User? User { get; set; }
+        public SaleStatus Status { get; set; } = SaleStatus.Active;
         public ICollection<SaleDetail> SaleDetails { get; set; } = new List<SaleDetail>();
         public Credit? Credit { get; set; }
         public ICollection<Return> Returns { get; set; } = new List<Return>();

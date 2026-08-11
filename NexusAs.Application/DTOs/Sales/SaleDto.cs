@@ -1,4 +1,5 @@
 ﻿using NexusAs.Application.DTOs.Sales;
+using NexusAs.Application.DTOs.Returns;
 
 namespace NexusAs.Application.DTOs.Sales
 {
@@ -10,12 +11,14 @@ namespace NexusAs.Application.DTOs.Sales
         public decimal Subtotal { get; set; }
         public decimal Discount { get; set; }
         public decimal Total { get; set; }
-        public string PaymentMethod { get; set; } = string.Empty;
+        public string PaymentMethodName { get; set; } = string.Empty;
         public string? Notes { get; set; }
         public string? CustomerName { get; set; }
         public int? CustomerId { get; set; }
         public string SellerName { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
         public CreditInfoDto? CreditInfo { get; set; }
         public IEnumerable<SaleDetailDto> Details { get; set; } = new List<SaleDetailDto>();
+        public IEnumerable<ReturnDto>? Returns { get; set; }
     }
 }

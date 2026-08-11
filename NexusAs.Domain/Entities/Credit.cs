@@ -11,7 +11,7 @@ namespace NexusAs.Domain.Entities
     {
         public int SaleId { get; set; }
         public Sale? Sale { get; set; }
-        public int CustomerId { get; set; }
+        public int? CustomerId { get; set; }
         public Customer? Customer { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal PaidAmount { get; set; }

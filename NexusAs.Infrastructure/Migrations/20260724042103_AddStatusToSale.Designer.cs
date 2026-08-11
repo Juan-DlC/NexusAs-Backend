@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NexusAs.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using NexusAs.Infrastructure.Data;
 namespace NexusAs.Infrastructure.Migrations
 {
     [DbContext(typeof(NexusAsDbContext))]
-    partial class NexusAsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724042103_AddStatusToSale")]
+    partial class AddStatusToSale
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -66,7 +69,7 @@ namespace NexusAs.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("CustomerId")
+                    b.Property<int>("CustomerId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("DueDate")
@@ -478,7 +481,7 @@ namespace NexusAs.Infrastructure.Migrations
                         {
                             Id = 1,
                             Code = "CASH",
-                            CreatedAt = new DateTime(2026, 8, 1, 14, 17, 39, 85, DateTimeKind.Local).AddTicks(9972),
+                            CreatedAt = new DateTime(2026, 7, 23, 23, 21, 2, 373, DateTimeKind.Local).AddTicks(6446),
                             Description = "Pago en efectivo",
                             IsActive = true,
                             Name = "Contado"
@@ -487,7 +490,7 @@ namespace NexusAs.Infrastructure.Migrations
                         {
                             Id = 2,
                             Code = "CREDIT",
-                            CreatedAt = new DateTime(2026, 8, 1, 14, 17, 39, 86, DateTimeKind.Local).AddTicks(6),
+                            CreatedAt = new DateTime(2026, 7, 23, 23, 21, 2, 373, DateTimeKind.Local).AddTicks(6471),
                             Description = "Pago a crédito",
                             IsActive = true,
                             Name = "Crédito"
@@ -496,7 +499,7 @@ namespace NexusAs.Infrastructure.Migrations
                         {
                             Id = 3,
                             Code = "ADDI",
-                            CreatedAt = new DateTime(2026, 8, 1, 14, 17, 39, 86, DateTimeKind.Local).AddTicks(8),
+                            CreatedAt = new DateTime(2026, 7, 23, 23, 21, 2, 373, DateTimeKind.Local).AddTicks(6474),
                             Description = "Pago mediante plataforma Addi",
                             IsActive = true,
                             Name = "Addi"
@@ -505,7 +508,7 @@ namespace NexusAs.Infrastructure.Migrations
                         {
                             Id = 4,
                             Code = "SISTECREDITO",
-                            CreatedAt = new DateTime(2026, 8, 1, 14, 17, 39, 86, DateTimeKind.Local).AddTicks(10),
+                            CreatedAt = new DateTime(2026, 7, 23, 23, 21, 2, 373, DateTimeKind.Local).AddTicks(6476),
                             Description = "Pago mediante Sistecredito",
                             IsActive = true,
                             Name = "Sistecredito"
@@ -514,7 +517,7 @@ namespace NexusAs.Infrastructure.Migrations
                         {
                             Id = 5,
                             Code = "CARD",
-                            CreatedAt = new DateTime(2026, 8, 1, 14, 17, 39, 86, DateTimeKind.Local).AddTicks(12),
+                            CreatedAt = new DateTime(2026, 7, 23, 23, 21, 2, 373, DateTimeKind.Local).AddTicks(6478),
                             Description = "Pago con tarjeta de crédito o débito",
                             IsActive = true,
                             Name = "Tarjeta"
@@ -947,7 +950,8 @@ namespace NexusAs.Infrastructure.Migrations
                     b.HasOne("NexusAs.Domain.Entities.Customer", "Customer")
                         .WithMany("Credits")
                         .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("NexusAs.Domain.Entities.Sale", "Sale")
                         .WithOne("Credit")

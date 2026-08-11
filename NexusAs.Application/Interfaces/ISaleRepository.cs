@@ -8,5 +8,6 @@ namespace NexusAs.Application.Interfaces
             int userId, string userRole, DateTime? from, DateTime? to,
             string? search, int pageNumber, int pageSize);
         Task<Sale?> GetSaleByIdWithDetailsAsync(int id);
+        Task<IEnumerable<Sale>> GetTodaySalesAsync(DateTime from, DateTime to);
     }
 }

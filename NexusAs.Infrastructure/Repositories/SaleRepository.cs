@@ -51,7 +51,18 @@ namespace NexusAs.Infrastructure.Repositories
                     .ThenInclude(sd => sd.Product)
                 .Include(s => s.Credit)
                     .ThenInclude(c => c!.Installments)
+                .Include(s => s.Returns)
+                    .ThenInclude(r => r.ReturnDetails)
+                        .ThenInclude(rd => rd.Product)
                 .FirstOrDefaultAsync(s => s.Id == id);
+        }
+
+        public async Task<IEnumerable<Sale>> GetTodaySalesAsync(DateTime from, DateTime to)
+        {
+            return await _context.Sales
+                .Include(s => s.PaymentMethodEntity)
+                .Where(s => s.IsActive && s.Date >= from && s.Date < to)
+                .ToListAsync();
         }
     }
 

@@ -1,5 +1,6 @@
 ﻿using NexusAs.Application.DTOs.Partners;
 using NexusAs.Application.DTOs.Common;
+using NexusAs.Application.DTOs.Sales;
 
 namespace NexusAs.Application.Interfaces
 {
@@ -20,5 +21,6 @@ namespace NexusAs.Application.Interfaces
         Task<IEnumerable<PartnerProductViewDto>> GetMyProductsAsync(int partnerConfigId);
         Task<PartnerAdminSummaryDto> GetAdminSummaryAsync(int partnerConfigId);
         Task<PagedResponseDto<PartnerInvoiceDto>> GetPartnerInvoicesAsync(int partnerConfigId, int pageNumber, int pageSize);
+        Task<SaleDto> GetPartnerInvoiceDetailAsync(int partnerUserId, int saleId);
     }
 }

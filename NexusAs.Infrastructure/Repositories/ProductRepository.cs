@@ -17,6 +17,7 @@ namespace NexusAs.Infrastructure.Repositories
         {
             var query = _context.Products
                 .Include(p => p.Category)
+                .Include(p => p.Supplier)
                 .Where(p => isActiveFilter == null ? p.IsActive : p.IsActive == isActiveFilter);
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -64,6 +65,7 @@ namespace NexusAs.Infrastructure.Repositories
         {
             return await _context.Products
                 .Include(p => p.Category)
+                .Include(p => p.Supplier)
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
     }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using NexusAs.Api.Responses;
 using NexusAs.Application.DTOs.Partners;
 using NexusAs.Application.DTOs.Common;
+using NexusAs.Application.DTOs.Sales;
 using NexusAs.Application.Interfaces;
 using System.Security.Claims;
 
@@ -118,6 +119,19 @@ namespace NexusAs.Api.Controllers
         {
             var invoices = await _partnerService.GetPartnerInvoicesAsync(id, pageNumber, pageSize);
             return Ok(ApiResponse<PagedResponseDto<PartnerInvoiceDto>>.Success(invoices));
+        }
+
+        [HttpGet("{id}/invoices/{saleId}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetPartnerInvoiceDetail(int id, int saleId)
+        {
+            // Validar que la venta pertenece a la socia
+            var config = await _partnerService.GetPartnerByIdAsync(id);
+            if (config == null)
+                return NotFound(ApiResponse<string>.Fail($"Configuración de socia {id} no encontrada."));
+
+            var sale = await _partnerService.GetPartnerInvoiceDetailAsync(config.UserId, saleId);
+            return Ok(ApiResponse<SaleDto>.Success(sale));
         }
 
         [HttpGet("{id}/sales")]

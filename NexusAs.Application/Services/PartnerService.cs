@@ -5,6 +5,7 @@ using NexusAs.Domain.Entities;
 using NexusAs.Domain.Enums;
 using NexusAs.Domain.Exceptions;
 using NexusAs.Application.DTOs.Common;
+using NexusAs.Application.DTOs.Sales;
 
 namespace NexusAs.Application.Services
 {
@@ -13,15 +14,18 @@ namespace NexusAs.Application.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly IPartnerReportService _partnerReportService;
+        private readonly ISaleService _saleService;
 
         public PartnerService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
-            IPartnerReportService partnerReportService)
+            IPartnerReportService partnerReportService,
+            ISaleService saleService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _partnerReportService = partnerReportService;
+            _saleService = saleService;
         }
 
         public async Task<AllianceReportDto> GetAllianceReportAsync(DateTime from, DateTime to)
@@ -279,6 +283,28 @@ namespace NexusAs.Application.Services
             if (!Enum.TryParse<LiquidationType>(dto.Type, out var type))
                 throw new BusinessException("Tipo inválido. Use: Payment o Earning.");
 
+            // VALIDAR QUE EL ABONO NO SUPERE LA DEUDA (solo para Payment)
+            if (type == LiquidationType.Payment)
+            {
+                var sales = await _unitOfWork.PartnerSales
+                    .FindAsync(ps => ps.PartnerConfigId == partnerConfigId && ps.IsActive);
+                var liquidations = await _unitOfWork.PartnerLiquidations
+                    .FindAsync(pl => pl.PartnerConfigId == partnerConfigId && pl.IsActive);
+
+                var totalDebt = sales.Sum(s => s.PartnerPrice * s.Quantity);
+                var totalPaid = liquidations
+                    .Where(l => l.Type == LiquidationType.Payment)
+                    .Sum(l => l.Amount);
+                var pendingDebt = totalDebt - totalPaid;
+
+                if (pendingDebt <= 0)
+                    throw new BusinessException("Esta socia no tiene deuda pendiente.");
+
+                if (dto.Amount > pendingDebt)
+                    throw new BusinessException(
+                        $"El abono (${dto.Amount:N0}) supera la deuda pendiente (${pendingDebt:N0}).");
+            }
+
             // Validar SaleId si se proporciona
             if (dto.SaleId.HasValue)
             {
@@ -479,6 +505,19 @@ namespace NexusAs.Application.Services
                 PageNumber = pageNumber,
                 PageSize = pageSize
             };
+        }
+
+        public async Task<SaleDto> GetPartnerInvoiceDetailAsync(int partnerUserId, int saleId)
+        {
+            var sale = await _unitOfWork.Sales.GetSaleByIdWithDetailsAsync(saleId);
+            if (sale == null)
+                throw new NotFoundException("Sale", saleId);
+
+            // Validar que la venta pertenece a la socia
+            if (sale.UserId != partnerUserId)
+                throw new BusinessException("Esta factura no pertenece a la socia especificada.");
+
+            return _mapper.Map<SaleDto>(sale);
         }
     }
 }

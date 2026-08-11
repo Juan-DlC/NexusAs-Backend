@@ -62,6 +62,15 @@ namespace NexusAs.Application.Services
             if (!categoryExists)
                 throw new BusinessException("La categoría seleccionada no existe.");
 
+            // Validar proveedor si se proporciona
+            if (dto.SupplierId.HasValue)
+            {
+                var supplierExists = await _unitOfWork.Suppliers
+                    .ExistsAsync(s => s.Id == dto.SupplierId.Value && s.IsActive);
+                if (!supplierExists)
+                    throw new BusinessException("El proveedor seleccionado no existe.");
+            }
+
             var product = _mapper.Map<Product>(dto);
             await _unitOfWork.Products.AddAsync(product);
             await _unitOfWork.SaveChangesAsync();
@@ -83,6 +92,15 @@ namespace NexusAs.Application.Services
                 .ExistsAsync(c => c.Id == dto.CategoryId && c.IsActive);
             if (!categoryExists)
                 throw new BusinessException("La categoría seleccionada no existe.");
+
+            // Validar proveedor si se proporciona
+            if (dto.SupplierId.HasValue)
+            {
+                var supplierExists = await _unitOfWork.Suppliers
+                    .ExistsAsync(s => s.Id == dto.SupplierId.Value && s.IsActive);
+                if (!supplierExists)
+                    throw new BusinessException("El proveedor seleccionado no existe.");
+            }
 
             _mapper.Map(dto, product);
             _unitOfWork.Products.Update(product);

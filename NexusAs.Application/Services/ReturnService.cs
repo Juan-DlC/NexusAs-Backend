@@ -129,44 +129,17 @@ namespace NexusAs.Application.Services
                 };
                 await _unitOfWork.StockMovements.AddAsync(stockMovement);
 
-                // 7. DESCUENTO DE CRÉDITO (si la venta fue a crédito)
-                if (sale.Credit != null)
+                // 6.1 ACTUALIZAR SALEDETAIL
+                saleDetail.Quantity -= detailDto.Quantity;
+                if (saleDetail.Quantity <= 0)
                 {
-                    var credit = await _unitOfWork.Credits.GetByIdWithDetailsAsync(sale.Credit.Id);
-                    if (credit != null && credit.Status != CreditStatus.Paid)
-                    {
-                        decimal amountToDeduct = returnDetail.Subtotal;
-                        credit.TotalAmount -= amountToDeduct;
-                        credit.PendingAmount = Math.Max(0, credit.TotalAmount - credit.PaidAmount);
-
-                        // Actualizar estado del crédito
-                        if (credit.PendingAmount == 0)
-                            credit.Status = CreditStatus.Paid;
-                        else if (credit.PaidAmount > 0)
-                            credit.Status = CreditStatus.Partial;
-
-                        _unitOfWork.Credits.Update(credit);
-
-                        // Ajustar cuotas proporcionalmente
-                        var unpaidInstallments = credit.Installments
-                            .Where(i => !i.IsPaid)
-                            .OrderBy(i => i.Number)
-                            .ToList();
-
-                        if (unpaidInstallments.Any())
-                        {
-                            decimal newInstallmentAmount = Math.Round(
-                                credit.PendingAmount / unpaidInstallments.Count, 2);
-
-                            foreach (var installment in unpaidInstallments)
-                            {
-                                installment.Amount = newInstallmentAmount;
-                            }
-                        }
-                    }
+                    saleDetail.IsActive = false;
+                    saleDetail.Quantity = 0; // Asegurar que quede en 0, no negativo
                 }
+                saleDetail.Subtotal = saleDetail.Quantity * saleDetail.UnitPrice;
+                _unitOfWork.SaleDetails.Update(saleDetail);
 
-                // 8. DESCUENTO DE GANANCIAS DE SOCIA (si fue venta de Partner)
+                // 7. DESCUENTO DE GANANCIAS DE SOCIA (si fue venta de Partner)
                 if (returnType == ReturnType.PartnerReturn)
                 {
                     var partnerSales = await _unitOfWork.PartnerSales.FindAsync(ps =>
@@ -176,9 +149,14 @@ namespace NexusAs.Application.Services
 
                     foreach (var partnerSale in partnerSales)
                     {
+                        if (partnerSale == null) continue; // Null check
+
                         // Calcular proporción a descontar
                         decimal quantityReturned = detailDto.Quantity;
                         decimal quantitySold = partnerSale.Quantity;
+                        
+                        if (quantitySold <= 0) continue; // Evitar división por cero
+                        
                         decimal returnRatio = Math.Min(quantityReturned / quantitySold, 1);
 
                         // Descontar ganancias proporcionalmente
@@ -188,8 +166,10 @@ namespace NexusAs.Application.Services
 
                         if (partnerSale.Quantity <= 0)
                         {
-                            // Marcar como inactivo si se devolvió todo
-                            _unitOfWork.PartnerSales.Delete(partnerSale);
+                            // Marcar como inactivo en vez de eliminar (auditoría)
+                            partnerSale.IsActive = false;
+                            partnerSale.Quantity = 0;
+                            _unitOfWork.PartnerSales.Update(partnerSale);
                         }
                         else
                         {
@@ -202,9 +182,107 @@ namespace NexusAs.Application.Services
             // Actualizar total de la devolución
             returnEntity.TotalAmount = totalAmount;
             _unitOfWork.Returns.Update(returnEntity);
+
+            // 8.1 RECALCULAR SALE.SUBTOTAL Y SALE.TOTAL (TAREA 3.5)
+            var activeDetails = sale.SaleDetails.Where(sd => sd.IsActive).ToList();
+            sale.Subtotal = activeDetails.Sum(sd => sd.Subtotal);
+            sale.Total = sale.Subtotal - sale.Discount;
+
+            // 8.2 RECALCULAR CRÉDITO SI EXISTE (TAREA 3.1 y 3.2)
+            if (sale.Credit != null)
+            {
+                var credit = await _unitOfWork.Credits.GetByIdWithDetailsAsync(sale.Credit.Id);
+                if (credit == null)
+                {
+                    // TAREA 3.1: Si credit es null, solo actualizar la venta y salir
+                    _unitOfWork.Sales.Update(sale);
+                    await _unitOfWork.SaveChangesAsync();
+                    return _mapper.Map<ReturnDto>(returnEntity);
+                }
+
+                credit.TotalAmount = sale.Total;
+                credit.PendingAmount = Math.Max(0, credit.TotalAmount - credit.PaidAmount);
+
+                // Actualizar estado del crédito
+                if (credit.PendingAmount == 0)
+                    credit.Status = CreditStatus.Paid;
+                else if (credit.PaidAmount > 0 && credit.PaidAmount < credit.TotalAmount)
+                    credit.Status = CreditStatus.Partial;
+                else if (credit.PaidAmount == 0)
+                    credit.Status = CreditStatus.Pending;
+
+                _unitOfWork.Credits.Update(credit);
+
+                // TAREA 3.2: Redistribuir cuotas pendientes con null checks robustos
+                var unpaidInstallments = credit.Installments?
+                    .Where(i => !i.IsPaid)
+                    .OrderBy(i => i.Number)
+                    .ToList() ?? new List<CreditInstallment>();
+
+                if (unpaidInstallments.Any() && credit.PendingAmount > 0)
+                {
+                    decimal newInstallmentAmount = Math.Round(
+                        credit.PendingAmount / unpaidInstallments.Count, 2);
+
+                    foreach (var installment in unpaidInstallments)
+                    {
+                        if (installment != null)
+                        {
+                            installment.Amount = newInstallmentAmount;
+                        }
+                    }
+                }
+            }
+
+            // 9. ACTUALIZAR ESTADO DE LA VENTA
+            if (sale.Total <= 0)
+            {
+                sale.Status = SaleStatus.FullReturn;
+                sale.IsActive = false;
+            }
+            else
+            {
+                // Verificar si todos los productos fueron devueltos completamente
+                var allReturns = await _unitOfWork.ReturnDetails.FindAsync(rd => 
+                    rd.Return!.SaleId == sale.Id && rd.Return.IsActive);
+                
+                bool allFullyReturned = true;
+                foreach (var saleDetail in sale.SaleDetails.Where(sd => sd.IsActive))
+                {
+                    var totalReturned = allReturns
+                        .Where(rd => rd.ProductId == saleDetail.ProductId)
+                        .Sum(rd => rd.Quantity);
+                    
+                    if (totalReturned < saleDetail.Quantity)
+                    {
+                        allFullyReturned = false;
+                        break;
+                    }
+                }
+
+                if (allFullyReturned && !activeDetails.Any())
+                {
+                    sale.Status = SaleStatus.FullReturn;
+                    sale.IsActive = false;
+                }
+                else
+                {
+                    sale.Status = SaleStatus.PartialReturn;
+                }
+            }
+            
+            _unitOfWork.Sales.Update(sale);
             await _unitOfWork.SaveChangesAsync();
 
             return _mapper.Map<ReturnDto>(returnEntity);
+        }
+
+        public async Task<IEnumerable<ReturnDto>> GetBySaleIdAsync(int saleId)
+        {
+            var returns = await _unitOfWork.Returns.FindAsync(r =>
+                r.SaleId == saleId && r.IsActive);
+
+            return _mapper.Map<IEnumerable<ReturnDto>>(returns.OrderByDescending(r => r.Date));
         }
     }
 }
