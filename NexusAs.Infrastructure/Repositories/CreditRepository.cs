@@ -13,8 +13,10 @@ namespace NexusAs.Infrastructure.Repositories
 
         public async Task<IEnumerable<Credit>> GetAllWithDetailsAsync(string? status = null)
         {
+            // BUG 3 FIX: Incluir Sale.User para obtener nombre del vendedor/socia
             return await _context.Credits
                 .Include(c => c.Sale)
+                    .ThenInclude(s => s!.User)
                 .Include(c => c.Customer)
                 .Where(c => c.IsActive &&
                     (status == null || c.Status.ToString() == status))
@@ -23,8 +25,10 @@ namespace NexusAs.Infrastructure.Repositories
 
         public async Task<Credit?> GetByIdWithDetailsAsync(int id)
         {
+            // BUG 3 FIX: Incluir Sale.User para obtener nombre del vendedor/socia
             return await _context.Credits
                 .Include(c => c.Sale)
+                    .ThenInclude(s => s!.User)
                 .Include(c => c.Customer)
                 .FirstOrDefaultAsync(c => c.Id == id && c.IsActive);
         }
@@ -52,8 +56,10 @@ namespace NexusAs.Infrastructure.Repositories
                 statusEnum = parsed;
             }
 
+            // BUG 3 FIX: Incluir Sale.User para obtener nombre del vendedor/socia
             var query = _context.Credits
                 .Include(c => c.Sale)
+                    .ThenInclude(s => s!.User)
                 .Include(c => c.Customer)
                 .Where(c => c.IsActive &&
                     (statusEnum == null || c.Status == statusEnum));

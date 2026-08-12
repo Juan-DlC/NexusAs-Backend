@@ -48,28 +48,22 @@ namespace NexusAs.Infrastructure.Services
                 .OrderBy(pl => pl.Date)
                 .ToListAsync();
 
-            // Totales GENERALES (sin filtro de fecha)
-            var allSales = await _context.PartnerSales
-                .Where(ps => ps.PartnerConfigId == partnerConfigId && ps.IsActive)
-                .ToListAsync();
-            
-            var allLiquidations = await _context.PartnerLiquidations
-                .Where(pl => pl.PartnerConfigId == partnerConfigId && pl.IsActive)
-                .ToListAsync();
-
-            var totalDebt = allSales.Sum(s => s.PartnerPrice * s.Quantity);
-            var totalPaid = allLiquidations
-                .Where(l => l.Type == LiquidationType.Payment)
-                .Sum(l => l.Amount);
-            var totalEarnings = sales.Sum(s => s.PartnerEarning);
-
-            // Facturas con saldo pendiente (para la nueva sección)
-            var salesWithPendingDebt = await _context.Sales
+            // BUG 4 FIX: Calcular deuda SOLO de créditos pendientes (no todas las ventas)
+            var salesWithDebt = await _context.Sales
                 .Include(s => s.Credit)
-                .Where(s => s.UserId == config.UserId && s.IsActive)
-                .Where(s => s.Credit == null || s.Credit.Status != CreditStatus.Paid)
+                .Include(s => s.PaymentMethodEntity)
+                .Where(s => s.UserId == config.UserId && s.IsActive
+                    && s.Credit != null && s.Credit.Status != CreditStatus.Paid)
                 .OrderByDescending(s => s.Date)
                 .ToListAsync();
+
+            decimal totalDebt = salesWithDebt
+                .Where(s => s.Credit != null)
+                .Sum(s => s.Credit!.TotalAmount);
+            decimal totalPaid = salesWithDebt
+                .Where(s => s.Credit != null)
+                .Sum(s => s.Credit!.PaidAmount);
+            decimal pendingDebt = totalDebt - totalPaid;
 
             var logoBytes = File.Exists(_reportStyle.LogoPath)
                 ? File.ReadAllBytes(_reportStyle.LogoPath) : null;
@@ -109,10 +103,10 @@ namespace NexusAs.Infrastructure.Services
 
                     page.Content().PaddingTop(10).Column(col =>
                     {
-                        // Resumen
+                        // BUG 4 FIX: Resumen solo con deuda de créditos
                         col.Item().Background(_reportStyle.ColorFondoSuave).Padding(8).Column(res =>
                         {
-                            res.Item().Text("Resumen").FontSize(13).Bold().FontColor(_reportStyle.ColorAcento);
+                            res.Item().Text("Resumen de Deuda").FontSize(13).Bold().FontColor(_reportStyle.ColorAcento);
                             res.Item().PaddingTop(4).Table(table =>
                             {
                                 table.ColumnsDefinition(c =>
@@ -120,22 +114,22 @@ namespace NexusAs.Infrastructure.Services
                                     c.RelativeColumn();
                                     c.RelativeColumn();
                                 });
-                                table.Cell().Text("Total deuda con AS:").Bold();
+                                table.Cell().Text("Total deuda (créditos):").Bold();
                                 table.Cell().AlignRight().Text($"${totalDebt:N0}");
                                 table.Cell().Text("Total abonado:").Bold().FontColor(_reportStyle.ColorExito);
                                 table.Cell().AlignRight()
                                     .Text($"${totalPaid:N0}").FontColor(_reportStyle.ColorExito);
                                 table.Cell().Text("Saldo pendiente:").Bold().FontColor(_reportStyle.ColorAlerta);
                                 table.Cell().AlignRight()
-                                    .Text($"${totalDebt - totalPaid:N0}").Bold().FontColor(_reportStyle.ColorAlerta);
+                                    .Text($"${pendingDebt:N0}").Bold().FontColor(_reportStyle.ColorAlerta);
                             });
                         });
 
-                        // Facturas con saldo pendiente
+                        // BUG 4 FIX: Facturas con saldo pendiente - tabla mejorada
                         col.Item().PaddingTop(12)
-                            .Text("Facturas con saldo pendiente").FontSize(12).Bold();
+                            .Text("Facturas con Saldo Pendiente").FontSize(12).Bold();
                         
-                        if (salesWithPendingDebt.Any())
+                        if (salesWithDebt.Any())
                         {
                             col.Item().PaddingTop(4).Table(table =>
                             {
@@ -143,6 +137,7 @@ namespace NexusAs.Infrastructure.Services
                                 {
                                     c.RelativeColumn(2); // Factura
                                     c.RelativeColumn(2); // Fecha
+                                    c.RelativeColumn(2); // Método
                                     c.RelativeColumn(2); // Total
                                     c.RelativeColumn(2); // Abonado
                                     c.RelativeColumn(2); // Pendiente
@@ -150,7 +145,7 @@ namespace NexusAs.Infrastructure.Services
                                 table.Header(header =>
                                 {
                                     foreach (var title in new[]
-                                        { "Factura", "Fecha", "Total", "Abonado", "Pendiente" })
+                                        { "Factura", "Fecha", "Método", "Total", "Abonado", "Pendiente" })
                                     {
                                         header.Cell().Background(_reportStyle.ColorPrincipal)
                                             .Padding(4).Text(title)
@@ -162,22 +157,24 @@ namespace NexusAs.Infrastructure.Services
                                 decimal totalAbonado = 0;
                                 decimal totalPendiente = 0;
 
-                                foreach (var saleWithDebt in salesWithPendingDebt)
+                                foreach (var saleWithDebt in salesWithDebt)
                                 {
                                     var paidAmount = saleWithDebt.Credit?.PaidAmount ?? 0;
-                                    var pendingAmount = saleWithDebt.Total - paidAmount;
+                                    var pendingAmount = saleWithDebt.Credit?.PendingAmount ?? 0;
                                     
                                     totalFacturas += saleWithDebt.Total;
                                     totalAbonado += paidAmount;
                                     totalPendiente += pendingAmount;
 
-                                    var bg = salesWithPendingDebt.IndexOf(saleWithDebt) % 2 == 0
+                                    var bg = salesWithDebt.IndexOf(saleWithDebt) % 2 == 0
                                         ? "#FFFFFF" : _reportStyle.ColorFondoSuave;
                                     
                                     table.Cell().Background(bg).Padding(4)
                                         .Text(saleWithDebt.SaleNumber).FontSize(9);
                                     table.Cell().Background(bg).Padding(4)
                                         .Text(saleWithDebt.Date.ToString("dd/MM/yyyy")).FontSize(9);
+                                    table.Cell().Background(bg).Padding(4)
+                                        .Text(saleWithDebt.PaymentMethodEntity?.Name ?? "Crédito").FontSize(9);
                                     table.Cell().Background(bg).Padding(4)
                                         .Text($"${saleWithDebt.Total:N0}").FontSize(9);
                                     table.Cell().Background(bg).Padding(4)
@@ -191,8 +188,8 @@ namespace NexusAs.Infrastructure.Services
                                 // Fila de totales
                                 table.Cell().Background(_reportStyle.ColorPrincipal).Padding(4)
                                     .Text("TOTAL").FontColor(Colors.White).Bold().FontSize(9);
-                                table.Cell().Background(_reportStyle.ColorPrincipal).Padding(4)
-                                    .Text("").FontSize(9);
+                                table.Cell().Background(_reportStyle.ColorPrincipal).Padding(4).Text("");
+                                table.Cell().Background(_reportStyle.ColorPrincipal).Padding(4).Text("");
                                 table.Cell().Background(_reportStyle.ColorPrincipal).Padding(4)
                                     .Text($"${totalFacturas:N0}").FontColor(Colors.White).Bold().FontSize(9);
                                 table.Cell().Background(_reportStyle.ColorPrincipal).Padding(4)
@@ -207,7 +204,7 @@ namespace NexusAs.Infrastructure.Services
                                 .FontSize(10).Italic().FontColor(_reportStyle.ColorAcento);
                         }
 
-                        // Productos tomados
+                        // Productos tomados (del período)
                         col.Item().PaddingTop(12)
                             .Text("Productos Tomados (Período)").FontSize(12).Bold();
                         col.Item().PaddingTop(4).Table(table =>
@@ -251,7 +248,7 @@ namespace NexusAs.Infrastructure.Services
                         if (liquidations.Any())
                         {
                             col.Item().PaddingTop(12)
-                                .Text("Abonos Registrados").FontSize(12).Bold();
+                                .Text("Abonos Registrados (Período)").FontSize(12).Bold();
                             col.Item().PaddingTop(4).Table(table =>
                             {
                                 table.ColumnsDefinition(c =>

@@ -13,5 +13,7 @@
         public DateTime? DueDate { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? Notes { get; set; }
+        // BUG 3 FIX: Agregar SellerName para mostrar nombre de la socia
+        public string? SellerName { get; set; }
     }
 }

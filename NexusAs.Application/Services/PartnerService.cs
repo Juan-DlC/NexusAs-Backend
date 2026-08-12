@@ -213,15 +213,12 @@ namespace NexusAs.Application.Services
                 throw new NotFoundException("PartnerConfig", partnerConfigId);
 
             var user = await _unitOfWork.Users.GetByIdAsync(config.UserId);
+            
+            // BUG 1 FIX: Calcular deuda correctamente (solo créditos pendientes)
+            var (totalDebt, totalPaid) = await CalculatePartnerDebtAsync(config.UserId);
+            
             var sales = await _unitOfWork.PartnerSales
                 .FindAsync(ps => ps.PartnerConfigId == partnerConfigId);
-            var liquidations = await _unitOfWork.PartnerLiquidations
-                .FindAsync(pl => pl.PartnerConfigId == partnerConfigId);
-
-            var totalDebt = sales.Sum(s => s.PartnerPrice * s.Quantity);
-            var totalPaid = liquidations
-                .Where(l => l.Type == LiquidationType.Payment)
-                .Sum(l => l.Amount);
 
             return new PartnerSummaryDto
             {
@@ -437,16 +434,11 @@ namespace NexusAs.Application.Services
 
             var user = await _unitOfWork.Users.GetByIdAsync(config.UserId);
             
+            // BUG 1 FIX: Calcular deuda correctamente (solo créditos pendientes)
+            var (totalDebt, totalPaid) = await CalculatePartnerDebtAsync(config.UserId);
+            
             var sales = await _unitOfWork.PartnerSales
                 .FindAsync(ps => ps.PartnerConfigId == partnerConfigId);
-            
-            var liquidations = await _unitOfWork.PartnerLiquidations
-                .FindAsync(pl => pl.PartnerConfigId == partnerConfigId);
-
-            var totalDebt = sales.Sum(s => s.PartnerPrice * s.Quantity);
-            var totalPaid = liquidations
-                .Where(l => l.Type == LiquidationType.Payment)
-                .Sum(l => l.Amount);
 
             var invoiceCount = sales.Select(s => s.SaleId).Distinct().Count();
 
@@ -463,6 +455,36 @@ namespace NexusAs.Application.Services
             };
         }
 
+        // BUG 1 FIX: Método auxiliar para calcular deuda correcta
+        // Solo cuenta ventas a crédito y usa el PendingAmount del Credit
+        private async Task<(decimal totalDebt, decimal totalPaid)> CalculatePartnerDebtAsync(int partnerUserId)
+        {
+            // Obtener todas las ventas de la socia que tienen crédito
+            var salesWithCredit = await _unitOfWork.Sales.FindAsync(s => 
+                s.UserId == partnerUserId && s.IsActive);
+            
+            decimal totalDebt = 0;
+            decimal totalPaid = 0;
+
+            foreach (var sale in salesWithCredit)
+            {
+                // Buscar si esta venta tiene crédito
+                var credits = await _unitOfWork.Credits.FindAsync(c => 
+                    c.SaleId == sale.Id && c.IsActive);
+                var credit = credits.FirstOrDefault();
+
+                if (credit != null)
+                {
+                    // Venta a crédito: suma el total y lo abonado
+                    totalDebt += credit.TotalAmount;
+                    totalPaid += credit.PaidAmount;
+                }
+                // Si no tiene crédito (venta de contado), no suma nada a la deuda
+            }
+
+            return (totalDebt, totalPaid);
+        }
+
         public async Task<PagedResponseDto<PartnerInvoiceDto>> GetPartnerInvoicesAsync(
             int partnerConfigId, int pageNumber, int pageSize)
         {
@@ -470,7 +492,7 @@ namespace NexusAs.Application.Services
             if (config == null)
                 throw new NotFoundException("PartnerConfig", partnerConfigId);
 
-            // Obtener ventas del usuario de la socia (no Admin, por eso pasamos el userId)
+            // BUG 2 FIX: Obtener ventas con PaymentMethodEntity y Credit incluidos
             var (sales, totalRecords) = await _unitOfWork.Sales.GetSalesWithDetailsAsync(
                 config.UserId, "Partner", null, null, null, pageNumber, pageSize);
 
@@ -492,7 +514,7 @@ namespace NexusAs.Application.Services
                     SaleNumber = sale.SaleNumber,
                     Date = sale.Date,
                     Total = sale.Total,
-                    PaymentMethodName = sale.PaymentMethodEntity?.Name ?? "",
+                    PaymentMethodName = sale.PaymentMethodEntity?.Name ?? "Contado",
                     CreditStatus = creditStatus,
                     PendingAmount = pendingAmount
                 });

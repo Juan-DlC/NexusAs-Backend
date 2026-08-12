@@ -90,12 +90,19 @@ namespace NexusAs.Application.Mappings
                     opt => opt.MapFrom(src => src.Role.ToString()));
 
             //Credit
+            // BUG 3 FIX: Agregar SellerName y mejorar CustomerName para mostrar socia
             CreateMap<Credit, CreditDto>()
                 .ForMember(dest => dest.Status,
                     opt => opt.MapFrom(src => src.Status.ToString()))
+                .ForMember(dest => dest.SellerName,
+                    opt => opt.MapFrom(src => src.Sale != null && src.Sale.User != null
+                        ? src.Sale.User.FullName : null))
                 .ForMember(dest => dest.CustomerName,
                     opt => opt.MapFrom(src => src.Customer != null
-                        ? src.Customer.Name : string.Empty))
+                        ? src.Customer.Name
+                        : (src.Sale != null && src.Sale.User != null
+                            ? src.Sale.User.FullName + " (Socia)"
+                            : "Sin cliente")))
                 .ForMember(dest => dest.SaleNumber,
                     opt => opt.MapFrom(src => src.Sale != null
                         ? src.Sale.SaleNumber : string.Empty));
