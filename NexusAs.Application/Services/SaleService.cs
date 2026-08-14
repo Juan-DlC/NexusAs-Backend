@@ -74,6 +74,7 @@ namespace NexusAs.Application.Services
             }
 
             // TAREA 2: Calcular automáticamente precio de socia si UnitPrice es 0
+            // BUG 1 FIX: Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent / 100)
             if (dto.PartnerUserId.HasValue)
             {
                 var partnerConfig = (await _unitOfWork.PartnerConfigs
@@ -94,7 +95,8 @@ namespace NexusAs.Application.Services
                                     ? partnerConfig.AllianceCommissionPercent
                                     : partnerConfig.CommissionPercent;
                                 
-                                detailDto.UnitPrice = product.Cost + (gainAS * commissionPercent / 100);
+                                // BUG 1 FIX: Precio para socia = PrecioVenta - (Ganancia × Comisión%)
+                                detailDto.UnitPrice = product.SalePrice - (gainAS * commissionPercent / 100);
                             }
                         }
                     }
@@ -137,7 +139,26 @@ namespace NexusAs.Application.Services
             
             //Calcular totales
             var subtotal = dto.Details.Sum(d => d.Quantity * d.UnitPrice);
-            var total = subtotal - dto.Discount;
+            
+            // BUG 4 FIX: Calcular descuento por porcentaje o monto fijo
+            decimal discount = 0;
+            decimal? discountPercent = null;
+            
+            if (dto.DiscountPercent.HasValue && dto.DiscountPercent > 0)
+            {
+                discountPercent = dto.DiscountPercent.Value;
+                discount = subtotal * dto.DiscountPercent.Value / 100;
+            }
+            else if (dto.DiscountAmount.HasValue)
+            {
+                discount = dto.DiscountAmount.Value;
+            }
+            else if (dto.Discount > 0)  // Compatibilidad con versión anterior
+            {
+                discount = dto.Discount;
+            }
+            
+            var total = subtotal - discount;
 
             //Crear la venta
             var sale = new Sale
@@ -145,7 +166,8 @@ namespace NexusAs.Application.Services
                 SaleNumber = saleNumber,
                 Date = DateTime.Now,
                 Subtotal = subtotal,
-                Discount = dto.Discount,
+                Discount = discount,
+                DiscountPercent = discountPercent,
                 Total = total,
                 PaymentMethodId = dto.PaymentMethodId,
                 Notes = dto.Notes,
@@ -227,6 +249,7 @@ namespace NexusAs.Application.Services
                 }
             }
             // Si el vendedor es Partner, registrar ganancias
+            // BUG 1 FIX: Fórmula correcta para cálculo de partnerPrice y earnings
             var seller = await _unitOfWork.Users.GetByIdAsync(finalUserId);
             if (seller?.Role == UserRole.Partner)
             {
@@ -239,25 +262,18 @@ namespace NexusAs.Application.Services
                     {
                         var product = await _unitOfWork.Products
                             .GetByIdAsync(detailDto.ProductId);
-                        decimal partnerPrice;
-                        decimal commissionPercent;
                         
                         // Determinar porcentaje según tipo de producto
-                        if (product!.IsPartnership)
-                        {
-                            commissionPercent = partnerConfig.AllianceCommissionPercent;
-                        }
-                        else
-                        {
-                            commissionPercent = partnerConfig.CommissionPercent;
-                        }
+                        var commissionPercent = product!.IsPartnership
+                            ? partnerConfig.AllianceCommissionPercent
+                            : partnerConfig.CommissionPercent;
 
-                        // Calcular precio para la socia (mismo cálculo para ambos tipos)
+                        // BUG 1 FIX: Fórmula correcta
                         var gainAS = product.SalePrice - product.Cost;
-                        partnerPrice = product.Cost + (gainAS * commissionPercent / 100);
-
-                        var partnerEarning = Math.Max(0, detailDto.UnitPrice - partnerPrice);
-                        var asEarning = partnerPrice - product.Cost;
+                        var partnerPrice = product.SalePrice - (gainAS * commissionPercent / 100);
+                        var partnerEarning = gainAS * commissionPercent / 100;
+                        var asEarning = gainAS - partnerEarning;
+                        
                         var partnerSale = new PartnerSale
                         {
                             PartnerConfigId = partnerConfig.Id,

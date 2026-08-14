@@ -325,6 +325,55 @@ namespace NexusAs.Application.Services
             await _unitOfWork.PartnerLiquidations.AddAsync(liquidation);
             await _unitOfWork.SaveChangesAsync();
 
+            // BUG 2 FIX: Si el abono tiene SaleId, actualizar el crédito asociado
+            if (dto.SaleId.HasValue && type == LiquidationType.Payment)
+            {
+                var credits = await _unitOfWork.Credits.FindAsync(c => 
+                    c.SaleId == dto.SaleId.Value && c.IsActive);
+                var credit = credits.FirstOrDefault();
+                
+                if (credit != null)
+                {
+                    credit.PaidAmount += dto.Amount;
+                    credit.PendingAmount = credit.TotalAmount - credit.PaidAmount;
+                    
+                    // Actualizar estado del crédito
+                    if (credit.PendingAmount <= 0)
+                        credit.Status = CreditStatus.Paid;
+                    else if (credit.PaidAmount > 0 && credit.PaidAmount < credit.TotalAmount)
+                        credit.Status = CreditStatus.Partial;
+                    else
+                        credit.Status = CreditStatus.Pending;
+                    
+                    _unitOfWork.Credits.Update(credit);
+                    
+                    // Distribuir el abono en las cuotas pendientes
+                    var pendingInstallments = await _unitOfWork.CreditInstallments.FindAsync(i => 
+                        i.CreditId == credit.Id && !i.IsPaid);
+                    var installmentsList = pendingInstallments.OrderBy(i => i.Number).ToList();
+                    
+                    var remaining = dto.Amount;
+                    foreach (var inst in installmentsList)
+                    {
+                        if (remaining <= 0) break;
+                        
+                        if (remaining >= inst.Amount)
+                        {
+                            inst.IsPaid = true;
+                            remaining -= inst.Amount;
+                        }
+                        else
+                        {
+                            inst.Amount -= remaining;
+                            remaining = 0;
+                        }
+                        _unitOfWork.CreditInstallments.Update(inst);
+                    }
+                    
+                    await _unitOfWork.SaveChangesAsync();
+                }
+            }
+
             return new PartnerLiquidationDto
             {
                 Id = liquidation.Id,
@@ -347,11 +396,14 @@ namespace NexusAs.Application.Services
             if (product == null)
                 throw new NotFoundException("Product", productId);
 
-            if (product.IsPartnership)
-                return product.SalePrice;
+            // Determinar porcentaje según tipo de producto
+            var commissionPercent = product.IsPartnership
+                ? partnerConfig.AllianceCommissionPercent
+                : partnerConfig.CommissionPercent;
 
+            // BUG 1 FIX: Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent%)
             var gainAS = product.SalePrice - product.Cost;
-            return product.Cost + (gainAS * partnerConfig.CommissionPercent / 100);
+            return product.SalePrice - (gainAS * commissionPercent / 100);
         }
 
         public async Task<IEnumerable<PartnerProductViewDto>> GetMyProductsAsync(int partnerConfigId)
@@ -366,22 +418,14 @@ namespace NexusAs.Application.Services
             var result = new List<PartnerProductViewDto>();
             foreach (var product in products)
             {
-                decimal partnerPrice;
-                decimal commissionPercent;
-
                 // Determinar porcentaje según tipo de producto
-                if (product.IsPartnership)
-                {
-                    commissionPercent = partnerConfig.AllianceCommissionPercent;
-                }
-                else
-                {
-                    commissionPercent = partnerConfig.CommissionPercent;
-                }
+                var commissionPercent = product.IsPartnership
+                    ? partnerConfig.AllianceCommissionPercent
+                    : partnerConfig.CommissionPercent;
 
-                // Calcular precio para la socia (mismo cálculo para ambos tipos)
+                // BUG 1 FIX: Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent%)
                 var gainAS = product.SalePrice - product.Cost;
-                partnerPrice = product.Cost + (gainAS * commissionPercent / 100);
+                var partnerPrice = product.SalePrice - (gainAS * commissionPercent / 100);
 
                 result.Add(new PartnerProductViewDto
                 {

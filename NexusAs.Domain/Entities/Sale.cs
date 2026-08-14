@@ -13,6 +13,7 @@ namespace NexusAs.Domain.Entities
         public DateTime Date { get; set; }
         public decimal Subtotal { get; set; }
         public decimal Discount { get; set; }
+        public decimal? DiscountPercent { get; set; }  // BUG 4 FIX
         public decimal Total { get; set; }
         public int PaymentMethodId { get; set; }
         public PaymentMethodEntity? PaymentMethodEntity { get; set; }

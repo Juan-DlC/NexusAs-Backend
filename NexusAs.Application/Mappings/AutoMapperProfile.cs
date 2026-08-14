@@ -72,6 +72,8 @@ namespace NexusAs.Application.Mappings
                     ? src.User.FullName : string.Empty))
             .ForMember(dest => dest.Status,
                 opt => opt.MapFrom(src => src.Status.ToString()))
+            .ForMember(dest => dest.DiscountPercent,
+                opt => opt.MapFrom(src => src.DiscountPercent))  // BUG 4 FIX
             .ForMember(dest => dest.Details,
                 opt => opt.MapFrom(src => src.SaleDetails))
             .ForMember(dest => dest.Returns,
