@@ -571,32 +571,27 @@ namespace NexusAs.Application.Services
             if (config == null)
                 throw new NotFoundException("PartnerConfig", partnerConfigId);
 
-            // BUG 2 FIX: Obtener ventas con PaymentMethodEntity y Credit incluidos
+            // Obtener ventas con PaymentMethodEntity y Credit incluidos
             var (sales, totalRecords) = await _unitOfWork.Sales.GetSalesWithDetailsAsync(
                 config.UserId, "Partner", null, null, null, pageNumber, pageSize);
 
             var invoices = new List<PartnerInvoiceDto>();
             foreach (var sale in sales)
             {
-                var creditStatus = "NoCredit";
-                decimal pendingAmount = 0;
-
-                if (sale.Credit != null)
-                {
-                    creditStatus = sale.Credit.Status.ToString();
-                    pendingAmount = sale.Credit.PendingAmount;
-                }
-
-                invoices.Add(new PartnerInvoiceDto
+                var invoice = new PartnerInvoiceDto
                 {
                     SaleId = sale.Id,
                     SaleNumber = sale.SaleNumber,
                     Date = sale.Date,
                     Total = sale.Total,
-                    PaymentMethodName = sale.PaymentMethodEntity?.Name ?? "Contado",
-                    CreditStatus = creditStatus,
-                    PendingAmount = pendingAmount
-                });
+                    PaymentMethodName = sale.PaymentMethodEntity?.Name ?? "Desconocido",
+                    CreditStatus = DetermineCreditStatus(sale),
+                    PendingAmount = sale.Credit?.PendingAmount ?? 0,
+                    PaidAmount = sale.Credit?.PaidAmount ?? 0,
+                    IsFullyReturned = sale.Status == SaleStatus.FullReturn || sale.Total == 0
+                };
+
+                invoices.Add(invoice);
             }
 
             return new PagedResponseDto<PartnerInvoiceDto>
@@ -605,6 +600,31 @@ namespace NexusAs.Application.Services
                 TotalRecords = totalRecords,
                 PageNumber = pageNumber,
                 PageSize = pageSize
+            };
+        }
+
+        /// <summary>
+        /// Determina el estado del crédito basándose en el método de pago y el objeto Credit
+        /// </summary>
+        private string DetermineCreditStatus(Sale sale)
+        {
+            // PASO 1: Verificar si el método de pago es crédito
+            // Si NO es crédito, retornar "NoCredit" inmediatamente
+            if (sale.PaymentMethodEntity == null || sale.PaymentMethodEntity.Code != "CREDIT")
+                return "NoCredit";
+
+            // PASO 2: El método de pago ES crédito, verificar el objeto Credit
+            // Si no existe el objeto Credit, el crédito está pendiente (recién creado)
+            if (sale.Credit == null)
+                return "Pending";
+
+            // PASO 3: El objeto Credit existe, usar su estado
+            return sale.Credit.Status switch
+            {
+                CreditStatus.Pending => "Pending",
+                CreditStatus.Partial => "Partial",
+                CreditStatus.Paid => "Paid",
+                _ => "Pending" // Fallback por seguridad
             };
         }
 
