@@ -20,6 +20,11 @@ namespace NexusAs.DI.Extensions
                     configuration.GetConnectionString("NexusAsConnection")));
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+            
+            // Registrar repositorios específicos requeridos por servicios
+            services.AddScoped<ISaleRepository, SaleRepository>();
+            services.AddScoped<IProductRepository, ProductRepository>();
+            services.AddScoped<ICreditRepository, CreditRepository>();
 
             services.AddControllers(options =>
             {

@@ -15,17 +15,20 @@ namespace NexusAs.Application.Services
         private readonly IMapper _mapper;
         private readonly IPartnerReportService _partnerReportService;
         private readonly ISaleService _saleService;
+        private readonly IProductRepository _productRepository;
 
         public PartnerService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             IPartnerReportService partnerReportService,
-            ISaleService saleService)
+            ISaleService saleService,
+            IProductRepository productRepository)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _partnerReportService = partnerReportService;
             _saleService = saleService;
+            _productRepository = productRepository;
         }
 
         public async Task<AllianceReportDto> GetAllianceReportAsync(DateTime from, DateTime to)
@@ -214,7 +217,7 @@ namespace NexusAs.Application.Services
 
             var user = await _unitOfWork.Users.GetByIdAsync(config.UserId);
             
-            // BUG 1 FIX: Calcular deuda correctamente (solo créditos pendientes)
+            // Calcular deuda correctamente (solo créditos pendientes)
             var (totalDebt, totalPaid) = await CalculatePartnerDebtAsync(config.UserId);
             
             var sales = await _unitOfWork.PartnerSales
@@ -420,29 +423,30 @@ namespace NexusAs.Application.Services
                 ? partnerConfig.AllianceCommissionPercent
                 : partnerConfig.CommissionPercent;
 
-            // BUG 1 FIX: Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent%)
+            // Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent%)
             var gainAS = product.SalePrice - product.Cost;
             return product.SalePrice - (gainAS * commissionPercent / 100);
         }
 
+        // TAREA 1 FIX: Usar repositorio específico con Include de Category y Supplier
         public async Task<IEnumerable<PartnerProductViewDto>> GetMyProductsAsync(int partnerConfigId)
         {
             var partnerConfig = await _unitOfWork.PartnerConfigs.GetByIdAsync(partnerConfigId);
             if (partnerConfig == null)
                 throw new NotFoundException("PartnerConfig", partnerConfigId);
 
-            var (products, _) = await _unitOfWork.Products.GetAllPagedAsync(
-                null, null, null, 1, 1000);
+            // Usar repositorio con Include de Category y Supplier
+            var products = await _productRepository.GetProductsWithCategoryAsync();
 
             var result = new List<PartnerProductViewDto>();
-            foreach (var product in products)
+            foreach (var product in products.Where(p => p.IsActive && p.Stock > 0).OrderBy(p => p.Name))
             {
                 // Determinar porcentaje según tipo de producto
                 var commissionPercent = product.IsPartnership
                     ? partnerConfig.AllianceCommissionPercent
                     : partnerConfig.CommissionPercent;
 
-                // BUG 1 FIX: Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent%)
+                // Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent%)
                 var gainAS = product.SalePrice - product.Cost;
                 var partnerPrice = product.SalePrice - (gainAS * commissionPercent / 100);
 
@@ -451,7 +455,7 @@ namespace NexusAs.Application.Services
                     ProductId = product.Id,
                     Code = product.Code,
                     Name = product.Name,
-                    CategoryName = product.Category?.Name ?? "",
+                    CategoryName = product.Category?.Name ?? string.Empty,
                     Stock = product.Stock,
                     PartnerPrice = Math.Round(partnerPrice, 0),
                     SuggestedPrice = product.SalePrice,
@@ -513,7 +517,7 @@ namespace NexusAs.Application.Services
 
             var user = await _unitOfWork.Users.GetByIdAsync(config.UserId);
             
-            // BUG 1 FIX: Calcular deuda correctamente (solo créditos pendientes)
+            // Calcular deuda correctamente (solo créditos pendientes)
             var (totalDebt, totalPaid) = await CalculatePartnerDebtAsync(config.UserId);
             
             var sales = await _unitOfWork.PartnerSales
@@ -534,7 +538,7 @@ namespace NexusAs.Application.Services
             };
         }
 
-        // BUG 1 FIX: Método auxiliar para calcular deuda correcta
+        // Método auxiliar para calcular deuda correcta
         // Solo cuenta ventas a crédito y usa el PendingAmount del Credit
         private async Task<(decimal totalDebt, decimal totalPaid)> CalculatePartnerDebtAsync(int partnerUserId)
         {

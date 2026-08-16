@@ -10,6 +10,7 @@ namespace NexusAs.Infrastructure.Repositories
         public SaleRepository(NexusAsDbContext context) : base(context)
         {
         }
+        
         public async Task<(IEnumerable<Sale> Items, int TotalRecords)> GetSalesWithDetailsAsync(
             int userId, string userRole, DateTime? from, DateTime? to,
             string? search, int pageNumber, int pageSize)
@@ -18,6 +19,7 @@ namespace NexusAs.Infrastructure.Repositories
                 .Include(s => s.Customer)
                 .Include(s => s.User)
                 .Include(s => s.PaymentMethodEntity)
+                .Include(s => s.Credit)  // CRÍTICO: Incluir Credit para mostrar estado correcto
                 .Where(s => s.IsActive &&
                     (userRole == "Admin" || s.UserId == userId) &&
                     (from == null || s.Date >= from) &&
@@ -65,6 +67,34 @@ namespace NexusAs.Infrastructure.Repositories
                 .Where(s => s.IsActive && s.Date >= from && s.Date < to)
                 .ToListAsync();
         }
-    }
 
+        // TAREA 2: Métodos para dashboard con PaymentMethodName incluido
+        public async Task<IEnumerable<Sale>> GetSalesForDashboardAsync(int userId, string userRole, DateTime from, DateTime to)
+        {
+            var query = _context.Sales
+                .Include(s => s.PaymentMethodEntity)
+                .Where(s => s.IsActive && s.Date >= from && s.Date < to);
+
+            if (userRole != "Admin")
+                query = query.Where(s => s.UserId == userId);
+
+            return await query.ToListAsync();
+        }
+
+        public async Task<IEnumerable<Sale>> GetRecentSalesAsync(int userId, string userRole, int count)
+        {
+            var query = _context.Sales
+                .Include(s => s.PaymentMethodEntity)
+                .Include(s => s.Customer)
+                .Include(s => s.User)
+                .Where(s => s.IsActive)
+                .OrderByDescending(s => s.Date)
+                .Take(count);
+
+            if (userRole != "Admin")
+                query = query.Where(s => s.UserId == userId).OrderByDescending(s => s.Date).Take(count);
+
+            return await query.ToListAsync();
+        }
+    }
 }

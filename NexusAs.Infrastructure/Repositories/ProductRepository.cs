@@ -68,5 +68,14 @@ namespace NexusAs.Infrastructure.Repositories
                 .Include(p => p.Supplier)
                 .FirstOrDefaultAsync(p => p.Id == id);
         }
+
+        // TAREA 1: Método para obtener productos con Category y Supplier incluidos
+        public async Task<IEnumerable<Product>> GetProductsWithCategoryAsync()
+        {
+            return await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.Supplier)
+                .ToListAsync();
+        }
     }
 }
