@@ -10,13 +10,17 @@ namespace NexusAs.Application.DTOs.Sales
         public DateTime Date { get; set; }
         public decimal Subtotal { get; set; }
         public decimal Discount { get; set; }
-        public decimal? DiscountPercent { get; set; }  // BUG 4 FIX
+        public decimal? DiscountPercent { get; set; }
         public decimal Total { get; set; }
         public string PaymentMethodName { get; set; } = string.Empty;
         public string? Notes { get; set; }
         public string? CustomerName { get; set; }
         public int? CustomerId { get; set; }
         public string SellerName { get; set; } = string.Empty;
+        
+        // BUG 1 FIX: Nombre de quien procesó la venta (Admin)
+        public string? ProcessedByName { get; set; }
+        
         public string Status { get; set; } = string.Empty;
         public CreditInfoDto? CreditInfo { get; set; }
         public IEnumerable<SaleDetailDto> Details { get; set; } = new List<SaleDetailDto>();

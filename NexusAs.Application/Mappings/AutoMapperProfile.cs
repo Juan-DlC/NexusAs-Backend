@@ -70,6 +70,10 @@ namespace NexusAs.Application.Mappings
             .ForMember(dest => dest.SellerName,
                 opt => opt.MapFrom(src => src.User != null
                     ? src.User.FullName : string.Empty))
+            .ForMember(dest => dest.ProcessedByName,
+                opt => opt.MapFrom(src => src.ProcessedByUser != null
+                    ? src.ProcessedByUser.FullName
+                    : (src.User != null ? src.User.FullName : string.Empty)))  // BUG 1 FIX
             .ForMember(dest => dest.Status,
                 opt => opt.MapFrom(src => src.Status.ToString()))
             .ForMember(dest => dest.DiscountPercent,

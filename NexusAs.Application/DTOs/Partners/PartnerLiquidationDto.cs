@@ -9,5 +9,6 @@
         public string? Notes { get; set; }
         public DateTime PeriodFrom { get; set; }
         public DateTime PeriodTo { get; set; }
+        public string? SaleNumber { get; set; }  // Número de factura cuando está vinculado a una venta
     }
 }

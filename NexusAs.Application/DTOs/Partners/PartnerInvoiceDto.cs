@@ -9,5 +9,9 @@ namespace NexusAs.Application.DTOs.Partners
         public string PaymentMethodName { get; set; } = string.Empty;
         public string CreditStatus { get; set; } = string.Empty; // "NoCredit","Pending","Partial","Paid"
         public decimal PendingAmount { get; set; }
+        
+        // BUG 2 FIX: Campos faltantes
+        public decimal PaidAmount { get; set; }
+        public bool IsFullyReturned { get; set; }
     }
 }

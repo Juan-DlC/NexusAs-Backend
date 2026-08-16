@@ -26,6 +26,7 @@ namespace NexusAs.Infrastructure.Services
             var sale = await _context.Sales
                 .Include(s => s.Customer)
                 .Include(s => s.User)
+                .Include(s => s.ProcessedByUser)  // BUG 1 FIX: Incluir quien procesó la venta
                 .Include(s => s.SaleDetails)
                     .ThenInclude(sd => sd.Product)
                 .Include(s => s.Credit)
@@ -81,7 +82,9 @@ namespace NexusAs.Infrastructure.Services
                                         .Bold().FontSize(11);
                                     left.Item().Text($"Fecha: {sale.Date:dd/MM/yyyy HH:mm}")
                                         .FontSize(9);
-                                    left.Item().Text($"Vendedor: {sale.User?.FullName ?? ""}")
+                                    // BUG 1 FIX: Mostrar quien procesó la venta, no la socia
+                                    var vendedor = sale.ProcessedByUser?.FullName ?? sale.User?.FullName ?? "Sistema";
+                                    left.Item().Text($"Vendedor: {vendedor}")
                                         .FontSize(9);
                                 });
 

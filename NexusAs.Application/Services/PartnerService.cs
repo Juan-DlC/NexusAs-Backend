@@ -280,34 +280,44 @@ namespace NexusAs.Application.Services
             if (!Enum.TryParse<LiquidationType>(dto.Type, out var type))
                 throw new BusinessException("Tipo inválido. Use: Payment o Earning.");
 
-            // VALIDAR QUE EL ABONO NO SUPERE LA DEUDA (solo para Payment)
+            // VALIDACIÓN MEJORADA: Validar que el abono no supere la deuda
             if (type == LiquidationType.Payment)
             {
-                var sales = await _unitOfWork.PartnerSales
-                    .FindAsync(ps => ps.PartnerConfigId == partnerConfigId && ps.IsActive);
-                var liquidations = await _unitOfWork.PartnerLiquidations
-                    .FindAsync(pl => pl.PartnerConfigId == partnerConfigId && pl.IsActive);
+                // Si el abono es a una factura específica, validar contra esa factura
+                if (dto.SaleId.HasValue)
+                {
+                    var sale = await _unitOfWork.Sales.GetByIdAsync(dto.SaleId.Value);
+                    if (sale == null)
+                        throw new NotFoundException("Sale", dto.SaleId.Value);
 
-                var totalDebt = sales.Sum(s => s.PartnerPrice * s.Quantity);
-                var totalPaid = liquidations
-                    .Where(l => l.Type == LiquidationType.Payment)
-                    .Sum(l => l.Amount);
-                var pendingDebt = totalDebt - totalPaid;
+                    // Buscar el crédito asociado a esta venta
+                    var credits = await _unitOfWork.Credits.FindAsync(c => 
+                        c.SaleId == dto.SaleId.Value && c.IsActive);
+                    var credit = credits.FirstOrDefault();
 
-                if (pendingDebt <= 0)
-                    throw new BusinessException("Esta socia no tiene deuda pendiente.");
+                    if (credit == null)
+                        throw new BusinessException("Esta factura no tiene un crédito asociado.");
 
-                if (dto.Amount > pendingDebt)
-                    throw new BusinessException(
-                        $"El abono (${dto.Amount:N0}) supera la deuda pendiente (${pendingDebt:N0}).");
-            }
+                    if (credit.PendingAmount <= 0)
+                        throw new BusinessException("Esta factura ya está completamente pagada.");
 
-            // Validar SaleId si se proporciona
-            if (dto.SaleId.HasValue)
-            {
-                var sale = await _unitOfWork.Sales.GetByIdAsync(dto.SaleId.Value);
-                if (sale == null)
-                    throw new NotFoundException("Sale", dto.SaleId.Value);
+                    if (dto.Amount > credit.PendingAmount)
+                        throw new BusinessException(
+                            $"El abono (${dto.Amount:N0}) supera el saldo pendiente de esta factura (${credit.PendingAmount:N0}).");
+                }
+                else
+                {
+                    // Si es abono general (sin SaleId), validar contra la deuda total
+                    var (totalDebt, totalPaid) = await CalculatePartnerDebtAsync(config.UserId);
+                    var pendingDebt = totalDebt - totalPaid;
+
+                    if (pendingDebt <= 0)
+                        throw new BusinessException("Esta socia no tiene deuda pendiente.");
+
+                    if (dto.Amount > pendingDebt)
+                        throw new BusinessException(
+                            $"El abono (${dto.Amount:N0}) supera la deuda pendiente total (${pendingDebt:N0}).");
+                }
             }
 
             var liquidation = new PartnerLiquidation
@@ -325,7 +335,7 @@ namespace NexusAs.Application.Services
             await _unitOfWork.PartnerLiquidations.AddAsync(liquidation);
             await _unitOfWork.SaveChangesAsync();
 
-            // BUG 2 FIX: Si el abono tiene SaleId, actualizar el crédito asociado
+            // Si el abono tiene SaleId, actualizar el crédito asociado
             if (dto.SaleId.HasValue && type == LiquidationType.Payment)
             {
                 var credits = await _unitOfWork.Credits.FindAsync(c => 
@@ -374,6 +384,14 @@ namespace NexusAs.Application.Services
                 }
             }
 
+            // Obtener el SaleNumber para el DTO de respuesta
+            string? saleNumber = null;
+            if (dto.SaleId.HasValue)
+            {
+                var sale = await _unitOfWork.Sales.GetByIdAsync(dto.SaleId.Value);
+                saleNumber = sale?.SaleNumber;
+            }
+
             return new PartnerLiquidationDto
             {
                 Id = liquidation.Id,
@@ -382,7 +400,8 @@ namespace NexusAs.Application.Services
                 Date = liquidation.Date,
                 Notes = liquidation.Notes,
                 PeriodFrom = liquidation.PeriodFrom,
-                PeriodTo = liquidation.PeriodTo
+                PeriodTo = liquidation.PeriodTo,
+                SaleNumber = saleNumber
             };
         }
 
@@ -449,16 +468,32 @@ namespace NexusAs.Application.Services
             var liquidations = await _unitOfWork.PartnerLiquidations
                 .FindAsync(pl => pl.PartnerConfigId == partnerConfigId);
 
-            return liquidations.Select(l => new PartnerLiquidationDto
+            var result = new List<PartnerLiquidationDto>();
+            foreach (var l in liquidations)
             {
-                Id = l.Id,
-                Amount = l.Amount,
-                Type = l.Type.ToString(),
-                Date = l.Date,
-                Notes = l.Notes,
-                PeriodFrom = l.PeriodFrom,
-                PeriodTo = l.PeriodTo
-            });
+                string? saleNumber = null;
+                
+                // Si la liquidación está vinculada a una venta, obtener el número de factura
+                if (l.SaleId.HasValue)
+                {
+                    var sale = await _unitOfWork.Sales.GetByIdAsync(l.SaleId.Value);
+                    saleNumber = sale?.SaleNumber;
+                }
+
+                result.Add(new PartnerLiquidationDto
+                {
+                    Id = l.Id,
+                    Amount = l.Amount,
+                    Type = l.Type.ToString(),
+                    Date = l.Date,
+                    Notes = l.Notes,
+                    PeriodFrom = l.PeriodFrom,
+                    PeriodTo = l.PeriodTo,
+                    SaleNumber = saleNumber
+                });
+            }
+
+            return result.OrderByDescending(x => x.Date);
         }
 
         public async Task<byte[]> GeneratePartnerStatementAsync(

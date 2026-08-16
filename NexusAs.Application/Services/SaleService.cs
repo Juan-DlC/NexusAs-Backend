@@ -61,6 +61,18 @@ namespace NexusAs.Application.Services
         }
         public async Task<SaleDto> CreateAsync(CreateSaleDto dto, int userId)
         {
+            // BUG 4 FIX: Verificar idempotencia para prevenir ventas duplicadas
+            if (!string.IsNullOrEmpty(dto.RequestId))
+            {
+                var existingSales = await _unitOfWork.Sales.FindAsync(s => 
+                    s.RequestId == dto.RequestId && 
+                    s.Date >= DateTime.Now.AddMinutes(-5));
+                var existing = existingSales.FirstOrDefault();
+                
+                if (existing != null)
+                    return _mapper.Map<SaleDto>(existing);
+            }
+            
             //Validar stock de todos los productos antes de crear la venta
             foreach (var detail in dto.Details)
             {
@@ -172,7 +184,9 @@ namespace NexusAs.Application.Services
                 PaymentMethodId = dto.PaymentMethodId,
                 Notes = dto.Notes,
                 CustomerId = dto.CustomerId,
-                UserId = finalUserId
+                UserId = finalUserId,
+                ProcessedByUserId = userId,  // BUG 1 FIX: Admin que procesó la venta
+                RequestId = dto.RequestId     // BUG 4 FIX: Para prevenir duplicados
             };
             await _unitOfWork.Sales.AddAsync(sale);
             await _unitOfWork.SaveChangesAsync();

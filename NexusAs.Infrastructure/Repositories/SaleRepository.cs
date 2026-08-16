@@ -46,6 +46,7 @@ namespace NexusAs.Infrastructure.Repositories
             return await _context.Sales
                 .Include(s => s.Customer)
                 .Include(s => s.User)
+                .Include(s => s.ProcessedByUser)  // BUG 1 FIX: Incluir quien procesó la venta
                 .Include(s => s.PaymentMethodEntity)
                 .Include(s => s.SaleDetails)
                     .ThenInclude(sd => sd.Product)

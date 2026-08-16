@@ -235,10 +235,11 @@ namespace NexusAs.Application.Services
             }
 
             // 9. ACTUALIZAR ESTADO DE LA VENTA
+            // BUG 5 FIX: No desactivar el Sale en devolución total, solo cambiar Status
             if (sale.Total <= 0)
             {
                 sale.Status = SaleStatus.FullReturn;
-                sale.IsActive = false;
+                // NO desactivar: sale.IsActive = false; - Mantener para historial
             }
             else
             {
@@ -263,7 +264,7 @@ namespace NexusAs.Application.Services
                 if (allFullyReturned && !activeDetails.Any())
                 {
                     sale.Status = SaleStatus.FullReturn;
-                    sale.IsActive = false;
+                    // NO desactivar: sale.IsActive = false; - Mantener para historial
                 }
                 else
                 {
