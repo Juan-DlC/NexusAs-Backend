@@ -21,7 +21,8 @@ namespace NexusAs.Application.Services
 
         public async Task<DashboardDto> GetSummaryAsync()
         {
-            var today = DateTime.UtcNow.Date;
+            // FIX: Usar hora LOCAL para que coincida con DateTime.Now usado al crear ventas
+            var today = DateTime.Now.Date;
             var tomorrow = today.AddDays(1);
 
             var salesList = await _unitOfWork.Sales.GetTodaySalesAsync(today, tomorrow);
@@ -51,10 +52,11 @@ namespace NexusAs.Application.Services
         // TAREA 2: Nuevo método con ventas recientes y PaymentMethodName
         public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(int userId, string userRole)
         {
-            var today = DateTime.UtcNow.Date;
+            // FIX: Usar hora LOCAL para que coincida con DateTime.Now usado al crear ventas
+            var today = DateTime.Now.Date;
             var tomorrow = today.AddDays(1);
 
-            // Ventas de hoy
+            // Ventas de hoy (filtrar por Date, no por CreatedAt)
             var todaySales = await _saleRepository.GetSalesForDashboardAsync(userId, userRole, today, tomorrow);
 
             // Créditos pendientes
@@ -70,8 +72,8 @@ namespace NexusAs.Application.Services
 
             return new DashboardSummaryDto
             {
-                TotalSalesToday = todaySales.Count(),
-                TotalRevenueToday = todaySales.Sum(s => s.Total),
+                TodaySalesCount = todaySales.Count(),
+                TodaySalesAmount = todaySales.Sum(s => s.Total),
                 LowStockCount = lowStockProducts.Count(),
                 PendingCreditsCount = pendingCredits.Count(),
                 PendingCreditsAmount = pendingCredits.Sum(c => c.PendingAmount),
