@@ -163,6 +163,18 @@ namespace NexusAs.Api.Controllers
             return Ok(ApiResponse<IEnumerable<PartnerLiquidationDto>>.Success(liquidations));
         }
 
+        // TAREA 3: Endpoint con paginación para liquidaciones
+        [HttpGet("{id}/liquidations/paged")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetLiquidationsPaged(
+            int id,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var result = await _partnerService.GetLiquidationsPagedAsync(id, pageNumber, pageSize);
+            return Ok(ApiResponse<PagedResponseDto<PartnerLiquidationDto>>.Success(result));
+        }
+
         [HttpGet("{id}/statement/pdf")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetStatementAdmin(

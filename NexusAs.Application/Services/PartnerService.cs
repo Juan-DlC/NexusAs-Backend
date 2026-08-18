@@ -418,14 +418,14 @@ namespace NexusAs.Application.Services
             if (product == null)
                 throw new NotFoundException("Product", productId);
 
-            // Determinar porcentaje según tipo de producto
+            // TAREA 2: Determinar porcentaje según tipo de producto
             var commissionPercent = product.IsPartnership
                 ? partnerConfig.AllianceCommissionPercent
                 : partnerConfig.CommissionPercent;
 
-            // Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent%)
+            // TAREA 2: Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent / 100)
             var gainAS = product.SalePrice - product.Cost;
-            return product.SalePrice - (gainAS * commissionPercent / 100);
+            return Math.Round(product.SalePrice - (gainAS * commissionPercent / 100), 0);
         }
 
         // TAREA 1 FIX: Usar repositorio específico con Include de Category y Supplier
@@ -441,12 +441,12 @@ namespace NexusAs.Application.Services
             var result = new List<PartnerProductViewDto>();
             foreach (var product in products.Where(p => p.IsActive && p.Stock > 0).OrderBy(p => p.Name))
             {
-                // Determinar porcentaje según tipo de producto
+                // TAREA 2: Determinar porcentaje según tipo de producto
                 var commissionPercent = product.IsPartnership
                     ? partnerConfig.AllianceCommissionPercent
                     : partnerConfig.CommissionPercent;
 
-                // Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent%)
+                // TAREA 2: Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent / 100)
                 var gainAS = product.SalePrice - product.Cost;
                 var partnerPrice = product.SalePrice - (gainAS * commissionPercent / 100);
 
@@ -498,6 +498,58 @@ namespace NexusAs.Application.Services
             }
 
             return result.OrderByDescending(x => x.Date);
+        }
+
+        // TAREA 3: Paginación en liquidaciones de socias
+        public async Task<PagedResponseDto<PartnerLiquidationDto>> GetLiquidationsPagedAsync(
+            int partnerConfigId, int pageNumber, int pageSize)
+        {
+            var config = await _unitOfWork.PartnerConfigs.GetByIdAsync(partnerConfigId);
+            if (config == null)
+                throw new NotFoundException("PartnerConfig", partnerConfigId);
+
+            var liquidations = await _unitOfWork.PartnerLiquidations
+                .FindAsync(pl => pl.PartnerConfigId == partnerConfigId && pl.IsActive);
+
+            var totalRecords = liquidations.Count();
+
+            var pagedLiquidations = liquidations
+                .OrderByDescending(pl => pl.Date)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var result = new List<PartnerLiquidationDto>();
+            foreach (var l in pagedLiquidations)
+            {
+                string? saleNumber = null;
+                
+                if (l.SaleId.HasValue)
+                {
+                    var sale = await _unitOfWork.Sales.GetByIdAsync(l.SaleId.Value);
+                    saleNumber = sale?.SaleNumber;
+                }
+
+                result.Add(new PartnerLiquidationDto
+                {
+                    Id = l.Id,
+                    Amount = l.Amount,
+                    Type = l.Type.ToString(),
+                    Date = l.Date,
+                    Notes = l.Notes,
+                    PeriodFrom = l.PeriodFrom,
+                    PeriodTo = l.PeriodTo,
+                    SaleNumber = saleNumber
+                });
+            }
+
+            return new PagedResponseDto<PartnerLiquidationDto>
+            {
+                Data = result,
+                TotalRecords = totalRecords,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
 
         public async Task<byte[]> GeneratePartnerStatementAsync(

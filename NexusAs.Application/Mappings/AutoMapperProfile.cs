@@ -142,6 +142,13 @@ namespace NexusAs.Application.Mappings
                 .ForMember(dest => dest.ProductName,
                     opt => opt.MapFrom(src => src.Product != null
                         ? src.Product.Name : string.Empty));
+
+            // TAREA 3: Mapeo de PartnerLiquidation a PartnerLiquidationDto
+            CreateMap<PartnerLiquidation, PartnerLiquidationDto>()
+                .ForMember(dest => dest.Type,
+                    opt => opt.MapFrom(src => src.Type.ToString()))
+                .ForMember(dest => dest.SaleNumber,
+                    opt => opt.MapFrom(src => src.Sale != null ? src.Sale.SaleNumber : null));
         }
     }
 }
