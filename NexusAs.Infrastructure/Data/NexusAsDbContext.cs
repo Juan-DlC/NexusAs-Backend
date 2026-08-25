@@ -54,6 +54,48 @@ namespace NexusAs.Infrastructure.Data
             base.OnModelCreating(modelBuilder);
             modelBuilder.ApplyConfigurationsFromAssembly(
                 System.Reflection.Assembly.GetExecutingAssembly());
+
+            // TAREA 5: ÍNDICES DE PERFORMANCE
+            // Índices para Sales
+            modelBuilder.Entity<Sale>()
+                .HasIndex(s => s.UserId)
+                .HasDatabaseName("IX_Sales_UserId");
+
+            modelBuilder.Entity<Sale>()
+                .HasIndex(s => s.Date)
+                .HasDatabaseName("IX_Sales_Date");
+
+            modelBuilder.Entity<Sale>()
+                .HasIndex(s => new { s.UserId, s.Date })
+                .HasDatabaseName("IX_Sales_UserId_Date");
+
+            // Índices para PartnerSale
+            modelBuilder.Entity<PartnerSale>()
+                .HasIndex(ps => ps.PartnerConfigId)
+                .HasDatabaseName("IX_PartnerSales_PartnerConfigId");
+
+            modelBuilder.Entity<PartnerSale>()
+                .HasIndex(ps => new { ps.PartnerConfigId, ps.IsActive })
+                .HasDatabaseName("IX_PartnerSales_PartnerConfigId_IsActive");
+
+            // Índices para Credit
+            modelBuilder.Entity<Credit>()
+                .HasIndex(c => c.Status)
+                .HasDatabaseName("IX_Credits_Status");
+
+            // Índices para StockMovement
+            modelBuilder.Entity<StockMovement>()
+                .HasIndex(sm => sm.ProductId)
+                .HasDatabaseName("IX_StockMovements_ProductId");
+
+            // Índices para Product
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.IsActive)
+                .HasDatabaseName("IX_Products_IsActive");
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => new { p.IsActive, p.CategoryId })
+                .HasDatabaseName("IX_Products_IsActive_CategoryId");
         }
 
     }

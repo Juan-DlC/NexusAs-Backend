@@ -13,5 +13,8 @@ namespace NexusAs.Application.Interfaces
         // TAREA 2: Métodos para dashboard con PaymentMethodName
         Task<IEnumerable<Sale>> GetSalesForDashboardAsync(int userId, string userRole, DateTime from, DateTime to);
         Task<IEnumerable<Sale>> GetRecentSalesAsync(int userId, string userRole, int count);
+        
+        // TAREA 3: OPTIMIZACIÓN - Obtener el último número de factura de forma eficiente
+        Task<string?> GetLastSaleNumberAsync();
     }
 }

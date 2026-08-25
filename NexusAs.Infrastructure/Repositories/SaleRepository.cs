@@ -96,5 +96,14 @@ namespace NexusAs.Infrastructure.Repositories
 
             return await query.ToListAsync();
         }
+
+        // TAREA 3: OPTIMIZACIÓN - Obtener el último número de factura de forma eficiente
+        public async Task<string?> GetLastSaleNumberAsync()
+        {
+            return await _context.Sales
+                .OrderByDescending(s => s.Id)
+                .Select(s => s.SaleNumber)
+                .FirstOrDefaultAsync();
+        }
     }
 }

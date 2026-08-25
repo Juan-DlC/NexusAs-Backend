@@ -5,16 +5,22 @@ using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Entities;
 using NexusAs.Domain.Enums;
 using NexusAs.Domain.Exceptions;
+
 namespace NexusAs.Application.Services
 {
     public class SaleService : ISaleService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
-        public SaleService(IUnitOfWork unitOfWork, IMapper mapper)
+        private readonly ISaleRepository _saleRepository;
+        private readonly IProductRepository _productRepository;
+
+        public SaleService(IUnitOfWork unitOfWork, IMapper mapper, ISaleRepository saleRepository, IProductRepository productRepository)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _saleRepository = saleRepository;
+            _productRepository = productRepository;
         }
         public async Task<PagedResponseDto<SaleDto>> GetAllAsync(
             int userId, string userRole,
@@ -61,7 +67,7 @@ namespace NexusAs.Application.Services
         }
         public async Task<SaleDto> CreateAsync(CreateSaleDto dto, int userId)
         {
-            // BUG 4 FIX: Verificar idempotencia para prevenir ventas duplicadas
+            // Verificar idempotencia para prevenir ventas duplicadas
             if (!string.IsNullOrEmpty(dto.RequestId))
             {
                 var existingSales = await _unitOfWork.Sales.FindAsync(s => 
@@ -73,59 +79,33 @@ namespace NexusAs.Application.Services
                     return _mapper.Map<SaleDto>(existing);
             }
             
-            //Validar stock de todos los productos antes de crear la venta
+            // TAREA 1: OPTIMIZACIÓN - Cargar TODOS los productos necesarios en UNA sola consulta
+            var productIds = dto.Details.Select(d => d.ProductId).Distinct().ToList();
+            var products = await _productRepository.GetProductsByIdsAsync(productIds);
+
+            // Validar stock de todos los productos antes de crear la venta
             foreach (var detail in dto.Details)
             {
-                var product = await _unitOfWork.Products.GetByIdAsync(detail.ProductId);
-                if (product == null)
+                if (!products.TryGetValue(detail.ProductId, out var product))
                     throw new NotFoundException(nameof(Product), detail.ProductId);
+                
                 if (product.Stock < detail.Quantity)
                     throw new BusinessException(
                         $"Stock insuficiente para '{product.Name}'. " + 
                         $"Disponible: {product.Stock}, Solicitado: {detail.Quantity}.");
             }
 
-            // TAREA 2: Calcular automáticamente precio de socia si UnitPrice es 0
-            // Fórmula correcta: partnerPrice = SalePrice - (gainAS × commissionPercent / 100)
-            if (dto.PartnerUserId.HasValue)
-            {
-                var partnerConfig = (await _unitOfWork.PartnerConfigs
-                    .FindAsync(pc => pc.UserId == dto.PartnerUserId.Value && pc.IsActive))
-                    .FirstOrDefault();
-
-                if (partnerConfig != null)
-                {
-                    foreach (var detailDto in dto.Details)
-                    {
-                        if (detailDto.UnitPrice <= 0)
-                        {
-                            var product = await _unitOfWork.Products.GetByIdAsync(detailDto.ProductId);
-                            if (product != null)
-                            {
-                                var gainAS = product.SalePrice - product.Cost;
-                                var commissionPercent = product.IsPartnership
-                                    ? partnerConfig.AllianceCommissionPercent
-                                    : partnerConfig.CommissionPercent;
-                                
-                                // TAREA 2: Precio para socia = PrecioVenta - (Ganancia × Comisión / 100)
-                                detailDto.UnitPrice = product.SalePrice - (gainAS * commissionPercent / 100);
-                            }
-                        }
-                    }
-                }
-            }
-
             // Determinar el UserId final (socia o usuario actual)
             int finalUserId = dto.PartnerUserId ?? userId;
 
-            // PASO 4: Validar que el userId existe en la tabla Users
+            // Validar que el userId existe en la tabla Users
             var userExists = await _unitOfWork.Users.GetByIdAsync(finalUserId);
             if (userExists == null)
             {
                 throw new BusinessException($"El usuario con Id {finalUserId} no existe en el sistema. Verifique que la socia esté correctamente registrada.");
             }
 
-            // TAREA 1: Validación explícita de PaymentMethodId ANTES de crear la venta
+            // Validación explícita de PaymentMethodId ANTES de crear la venta
             if (dto.PaymentMethodId <= 0)
                 throw new BusinessException("Debe seleccionar un método de pago válido.");
 
@@ -133,26 +113,52 @@ namespace NexusAs.Application.Services
             if (paymentMethod == null)
                 throw new BusinessException($"El método de pago seleccionado no existe.");
 
-            // Generar número de factura - FIX: usar MAX en lugar de COUNT para evitar duplicados
-            var allSales = await _unitOfWork.Sales.FindAsync(s => s.SaleNumber.StartsWith("FAC-"));
-            int nextNumber = 1;
-            if (allSales.Any())
+            // TAREA 1: OPTIMIZACIÓN - Cargar PartnerConfig UNA sola vez si es necesario
+            PartnerConfig? partnerConfig = null;
+            if (dto.PartnerUserId.HasValue || userExists.Role == UserRole.Partner)
             {
-                var maxNumber = allSales
-                    .Select(s => {
-                        var numberPart = s.SaleNumber.Replace("FAC-", "");
-                        return int.TryParse(numberPart, out int num) ? num : 0;
-                    })
-                    .DefaultIfEmpty(0)
-                    .Max();
-                nextNumber = maxNumber + 1;
+                var configs = await _unitOfWork.PartnerConfigs
+                    .FindAsync(pc => pc.UserId == finalUserId && pc.IsActive);
+                partnerConfig = configs.FirstOrDefault();
+            }
+
+            // Calcular automáticamente precio de socia si UnitPrice es 0
+            if (partnerConfig != null)
+            {
+                foreach (var detailDto in dto.Details)
+                {
+                    if (detailDto.UnitPrice <= 0)
+                    {
+                        if (products.TryGetValue(detailDto.ProductId, out var product))
+                        {
+                            var gainAS = product.SalePrice - product.Cost;
+                            var commissionPercent = product.IsPartnership
+                                ? partnerConfig.AllianceCommissionPercent
+                                : partnerConfig.CommissionPercent;
+                            
+                            // Precio para socia = PrecioVenta - (Ganancia × Comisión / 100)
+                            detailDto.UnitPrice = product.SalePrice - (gainAS * commissionPercent / 100);
+                        }
+                    }
+                }
+            }
+
+            // TAREA 3: OPTIMIZACIÓN - Generación eficiente de número de factura
+            var lastSale = await _saleRepository.GetLastSaleNumberAsync();
+            
+            int nextNumber = 1;
+            if (!string.IsNullOrEmpty(lastSale))
+            {
+                var parts = lastSale.Split('-');
+                if (parts.Length == 2 && int.TryParse(parts[1], out int last))
+                    nextNumber = last + 1;
             }
             var saleNumber = $"FAC-{nextNumber:D4}";
             
-            //Calcular totales
+            // Calcular totales
             var subtotal = dto.Details.Sum(d => d.Quantity * d.UnitPrice);
             
-            // BUG 4 FIX: Calcular descuento por porcentaje o monto fijo
+            // Calcular descuento por porcentaje o monto fijo
             decimal discount = 0;
             decimal? discountPercent = null;
             
@@ -172,7 +178,7 @@ namespace NexusAs.Application.Services
             
             var total = subtotal - discount;
 
-            //Crear la venta
+            // Crear la venta
             var sale = new Sale
             {
                 SaleNumber = saleNumber,
@@ -185,16 +191,19 @@ namespace NexusAs.Application.Services
                 Notes = dto.Notes,
                 CustomerId = dto.CustomerId,
                 UserId = finalUserId,
-                ProcessedByUserId = userId,  // BUG 1 FIX: Admin que procesó la venta
-                RequestId = dto.RequestId     // BUG 4 FIX: Para prevenir duplicados
+                ProcessedByUserId = userId,  // Admin que procesó la venta
+                RequestId = dto.RequestId     // Para prevenir duplicados
             };
             await _unitOfWork.Sales.AddAsync(sale);
             await _unitOfWork.SaveChangesAsync();
-            //Crear detalles, descontar stock y registrar movimientos
+
+            // Crear detalles, descontar stock y registrar movimientos
             foreach (var detailDto in dto.Details)
             {
-                var product = await _unitOfWork.Products.GetByIdAsync(detailDto.ProductId);
-                //Crear detalle de venta
+                if (!products.TryGetValue(detailDto.ProductId, out var product))
+                    continue; // Ya validado anteriormente
+
+                // Crear detalle de venta
                 var saleDetail = new SaleDetail
                 {
                     SaleId = sale.Id,
@@ -204,8 +213,9 @@ namespace NexusAs.Application.Services
                     Subtotal = detailDto.Quantity * detailDto.UnitPrice
                 };
                 await _unitOfWork.SaleDetails.AddAsync(saleDetail);
+
                 // Registrar movimiento de stock
-                var stockBefore = product!.Stock;
+                var stockBefore = product.Stock;
                 var movement = new StockMovement
                 {
                     ProductId = detailDto.ProductId,
@@ -219,11 +229,13 @@ namespace NexusAs.Application.Services
                     UserId = userId
                 };
                 await _unitOfWork.StockMovements.AddAsync(movement);
+
                 // Descontar stock
                 product.Stock -= detailDto.Quantity;
                 _unitOfWork.Products.Update(product);
             }
-            //Si es crédito, crear registro de crédito
+
+            // Si es crédito, crear registro de crédito
             if (paymentMethod.Code == "CREDIT")
             {
                 // Validar CustomerId solo si NO es venta a socia
@@ -248,6 +260,7 @@ namespace NexusAs.Application.Services
                 };
                 await _unitOfWork.Credits.AddAsync(credit);
                 await _unitOfWork.SaveChangesAsync();
+
                 // Generar las cuotas automáticamente
                 var installmentAmount = Math.Round(total / numberOfInstallments, 2);
                 for (int i = 1; i <= numberOfInstallments; i++)
@@ -262,55 +275,45 @@ namespace NexusAs.Application.Services
                     await _unitOfWork.CreditInstallments.AddAsync(installment);
                 }
             }
-            // Si el vendedor es Partner, registrar ganancias
-            // TAREA 2: Fórmula correcta para cálculo de partnerPrice y earnings
-            var seller = await _unitOfWork.Users.GetByIdAsync(finalUserId);
-            if (seller?.Role == UserRole.Partner)
-            {
-                var partnerConfig = (await _unitOfWork.PartnerConfigs
-                    .FindAsync(pc => pc.UserId == finalUserId && pc.IsActive))
-                    .FirstOrDefault();
-                if (partnerConfig != null)
-                {
-                    foreach (var detailDto in dto.Details)
-                    {
-                        var product = await _unitOfWork.Products
-                            .GetByIdAsync(detailDto.ProductId);
-                        
-                        // TAREA 2: Determinar porcentaje según tipo de producto
-                        var commissionPercent = product!.IsPartnership
-                            ? partnerConfig.AllianceCommissionPercent
-                            : partnerConfig.CommissionPercent;
 
-                        // TAREA 2: Fórmula correcta
-                        // gainAS = ganancia total del producto
-                        // partnerEarning = lo que gana la socia
-                        // asEarning = lo que gana AS
-                        // partnerPrice = precio al que compra la socia
-                        var gainAS = product.SalePrice - product.Cost;
-                        var partnerEarning = gainAS * commissionPercent / 100;
-                        var asEarning = gainAS - partnerEarning;
-                        var partnerPrice = product.SalePrice - partnerEarning;
-                        
-                        var partnerSale = new PartnerSale
-                        {
-                            PartnerConfigId = partnerConfig.Id,
-                            SaleId = sale.Id,
-                            ProductId = detailDto.ProductId,
-                            Quantity = detailDto.Quantity,
-                            CostPrice = product.Cost,
-                            PartnerPrice = Math.Round(partnerPrice, 0),
-                            SalePrice = product.SalePrice,
-                            CommissionPercent = commissionPercent,
-                            PartnerEarning = Math.Round(partnerEarning * detailDto.Quantity, 0),
-                            AsEarning = Math.Round(asEarning * detailDto.Quantity, 0),
-                            IsPartnership = product.IsPartnership,
-                            Date = DateTime.Now
-                        };
-                        await _unitOfWork.PartnerSales.AddAsync(partnerSale);
-                    }
+            // Si el vendedor es Partner, registrar ganancias
+            if (userExists.Role == UserRole.Partner && partnerConfig != null)
+            {
+                foreach (var detailDto in dto.Details)
+                {
+                    if (!products.TryGetValue(detailDto.ProductId, out var product))
+                        continue;
+                    
+                    // Determinar porcentaje según tipo de producto
+                    var commissionPercent = product.IsPartnership
+                        ? partnerConfig.AllianceCommissionPercent
+                        : partnerConfig.CommissionPercent;
+
+                    // Fórmula correcta
+                    var gainAS = product.SalePrice - product.Cost;
+                    var partnerEarning = gainAS * commissionPercent / 100;
+                    var asEarning = gainAS - partnerEarning;
+                    var partnerPrice = product.SalePrice - partnerEarning;
+                    
+                    var partnerSale = new PartnerSale
+                    {
+                        PartnerConfigId = partnerConfig.Id,
+                        SaleId = sale.Id,
+                        ProductId = detailDto.ProductId,
+                        Quantity = detailDto.Quantity,
+                        CostPrice = product.Cost,
+                        PartnerPrice = Math.Round(partnerPrice, 0),
+                        SalePrice = product.SalePrice,
+                        CommissionPercent = commissionPercent,
+                        PartnerEarning = Math.Round(partnerEarning * detailDto.Quantity, 0),
+                        AsEarning = Math.Round(asEarning * detailDto.Quantity, 0),
+                        IsPartnership = product.IsPartnership,
+                        Date = DateTime.Now
+                    };
+                    await _unitOfWork.PartnerSales.AddAsync(partnerSale);
                 }
             }
+
             await _unitOfWork.SaveChangesAsync();
             return _mapper.Map<SaleDto>(sale);
         }

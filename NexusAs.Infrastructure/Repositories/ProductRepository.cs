@@ -77,5 +77,13 @@ namespace NexusAs.Infrastructure.Repositories
                 .Include(p => p.Supplier)
                 .ToListAsync();
         }
+
+        // TAREA 1: OPTIMIZACIÓN - Cargar múltiples productos por IDs en una sola consulta
+        public async Task<Dictionary<int, Product>> GetProductsByIdsAsync(IEnumerable<int> productIds)
+        {
+            return await _context.Products
+                .Where(p => productIds.Contains(p.Id) && p.IsActive)
+                .ToDictionaryAsync(p => p.Id);
+        }
     }
 }

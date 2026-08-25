@@ -561,6 +561,7 @@ namespace NexusAs.Application.Services
                 .GeneratePartnerStatementPdfAsync(partnerConfigId, from, to);
         }
 
+        // TAREA 2: OPTIMIZACIÓN - Mantener lógica simplificada sin múltiples consultas innecesarias
         public async Task<PartnerAdminSummaryDto> GetAdminSummaryAsync(int partnerConfigId)
         {
             var config = await _unitOfWork.PartnerConfigs.GetByIdAsync(partnerConfigId);
@@ -573,7 +574,7 @@ namespace NexusAs.Application.Services
             var (totalDebt, totalPaid) = await CalculatePartnerDebtAsync(config.UserId);
             
             var sales = await _unitOfWork.PartnerSales
-                .FindAsync(ps => ps.PartnerConfigId == partnerConfigId);
+                .FindAsync(ps => ps.PartnerConfigId == partnerConfigId && ps.IsActive);
 
             var invoiceCount = sales.Select(s => s.SaleId).Distinct().Count();
 
@@ -583,7 +584,7 @@ namespace NexusAs.Application.Services
                 PartnerName = user?.FullName ?? "",
                 TotalDebt = totalDebt,
                 TotalPaid = totalPaid,
-                PendingDebt = totalDebt - totalPaid,
+                PendingDebt = Math.Max(0, totalDebt - totalPaid),
                 InvoiceCount = invoiceCount,
                 CommissionPercent = config.CommissionPercent,
                 AllianceCommissionPercent = config.AllianceCommissionPercent

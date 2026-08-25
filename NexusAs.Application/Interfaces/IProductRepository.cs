@@ -12,5 +12,8 @@ namespace NexusAs.Application.Interfaces
         
         // TAREA 1: Método para obtener productos con Category y Supplier incluidos
         Task<IEnumerable<Product>> GetProductsWithCategoryAsync();
+        
+        // TAREA 1: OPTIMIZACIÓN - Cargar múltiples productos por IDs en una sola consulta
+        Task<Dictionary<int, Product>> GetProductsByIdsAsync(IEnumerable<int> productIds);
     }
 }
