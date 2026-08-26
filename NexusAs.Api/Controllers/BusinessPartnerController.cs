@@ -14,10 +14,14 @@ namespace NexusAs.Api.Controllers
     public class BusinessPartnerController : ControllerBase
     {
         private readonly IBusinessPartnerService _service;
+        private readonly IBusinessPartnerReportService _reportService;
 
-        public BusinessPartnerController(IBusinessPartnerService service)
+        public BusinessPartnerController(
+            IBusinessPartnerService service,
+            IBusinessPartnerReportService reportService)
         {
             _service = service;
+            _reportService = reportService;
         }
 
         [HttpGet]
@@ -132,6 +136,14 @@ namespace NexusAs.Api.Controllers
         {
             var result = await _service.GetLiquidationByIdAsync(id);
             return Ok(ApiResponse<BusinessPartnerLiquidationDto>.Success(result!));
+        }
+
+        [HttpGet("liquidations/{liquidationId}/pdf")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetLiquidationPdf(int liquidationId)
+        {
+            var pdfBytes = await _reportService.GenerateLiquidationPdfAsync(liquidationId);
+            return File(pdfBytes, "application/pdf", $"liquidacion-{liquidationId}.pdf");
         }
     }
 

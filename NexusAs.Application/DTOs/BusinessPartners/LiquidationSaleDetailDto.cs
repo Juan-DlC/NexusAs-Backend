@@ -5,6 +5,8 @@ namespace NexusAs.Application.DTOs.BusinessPartners
         public int SaleId { get; set; }
         public string SaleNumber { get; set; } = string.Empty;
         public DateTime SaleDate { get; set; }
+        public string SellerName { get; set; } = string.Empty;
+        public string PaymentMethodName { get; set; } = string.Empty;
         public int ProductId { get; set; }
         public string ProductCode { get; set; } = string.Empty;
         public string ProductName { get; set; } = string.Empty;

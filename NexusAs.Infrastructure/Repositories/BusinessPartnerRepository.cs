@@ -59,9 +59,14 @@ namespace NexusAs.Infrastructure.Repositories
             DateTime fromDate,
             DateTime toDate)
         {
+            // BUG FIX: Incluir Credit y PaymentMethodEntity para determinar si está pagada
             return await _context.SaleDetails
                 .Include(sd => sd.Sale)
                     .ThenInclude(s => s.User)
+                .Include(sd => sd.Sale)
+                    .ThenInclude(s => s.Credit)
+                .Include(sd => sd.Sale)
+                    .ThenInclude(s => s.PaymentMethodEntity)
                 .Include(sd => sd.Product)
                     .ThenInclude(p => p.BusinessPartner)
                 .Where(sd =>
@@ -69,7 +74,11 @@ namespace NexusAs.Infrastructure.Repositories
                     sd.Sale.Date >= fromDate &&
                     sd.Sale.Date <= toDate &&
                     sd.Sale.IsActive &&
-                    sd.IsActive)
+                    sd.IsActive &&
+                    // BUG FIX: La venta está completamente pagada si:
+                    // - No tiene crédito (es contado) O
+                    // - Tiene crédito y está pagado
+                    (sd.Sale.Credit == null || sd.Sale.Credit.Status == Domain.Enums.CreditStatus.Paid))
                 .ToListAsync();
         }
 
@@ -105,6 +114,10 @@ namespace NexusAs.Infrastructure.Repositories
                 .Include(l => l.ProcessedByUser)
                 .Include(l => l.Details)
                     .ThenInclude(d => d.Sale)
+                        .ThenInclude(s => s.User)
+                .Include(l => l.Details)
+                    .ThenInclude(d => d.Sale)
+                        .ThenInclude(s => s.PaymentMethodEntity)
                 .Include(l => l.Details)
                     .ThenInclude(d => d.Product)
                 .Where(l => l.IsActive)
@@ -142,6 +155,10 @@ namespace NexusAs.Infrastructure.Repositories
                 .Include(l => l.ProcessedByUser)
                 .Include(l => l.Details)
                     .ThenInclude(d => d.Sale)
+                        .ThenInclude(s => s.User)
+                .Include(l => l.Details)
+                    .ThenInclude(d => d.Sale)
+                        .ThenInclude(s => s.PaymentMethodEntity)
                 .Include(l => l.Details)
                     .ThenInclude(d => d.Product)
                 .FirstOrDefaultAsync(l => l.Id == id);

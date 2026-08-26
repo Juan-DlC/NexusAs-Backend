@@ -37,6 +37,7 @@ namespace NexusAs.DI.Extensions
             services.AddScoped<ICatalogReportService, CatalogReportService>();
             services.AddScoped<IReceiptService, ReceiptService>();
             services.AddScoped<IPartnerReportService, PartnerReportService>();
+            services.AddScoped<IBusinessPartnerReportService, BusinessPartnerReportService>();
 
             return services;
         }
