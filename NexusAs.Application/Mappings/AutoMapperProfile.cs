@@ -11,6 +11,7 @@ using NexusAs.Application.DTOs.Suppliers;
 using NexusAs.Application.DTOs.PaymentMethods;
 using NexusAs.Application.DTOs.Returns;
 using NexusAs.Application.DTOs.Partners;
+using NexusAs.Application.DTOs.BusinessPartners;
 
 namespace NexusAs.Application.Mappings
 {
@@ -46,14 +47,20 @@ namespace NexusAs.Application.Mappings
                 .ForMember(dest => dest.SupplierName,
                     opt => opt.MapFrom(src => src.Supplier != null
                         ? src.Supplier.Name
+                        : null))
+                .ForMember(dest => dest.BusinessPartnerName,
+                    opt => opt.MapFrom(src => src.BusinessPartner != null
+                        ? src.BusinessPartner.Name
                         : null));
             
-            // TAREA 5: Mapeo explícito de SupplierId para Create y Update
+            // TAREA 5: Mapeo explícito de SupplierId y BusinessPartnerId para Create y Update
             CreateMap<CreateProductDto, Product>()
-                .ForMember(dest => dest.SupplierId, opt => opt.MapFrom(src => src.SupplierId));
+                .ForMember(dest => dest.SupplierId, opt => opt.MapFrom(src => src.SupplierId))
+                .ForMember(dest => dest.BusinessPartnerId, opt => opt.MapFrom(src => src.BusinessPartnerId));
             
             CreateMap<UpdateProductDto, Product>()
-                .ForMember(dest => dest.SupplierId, opt => opt.MapFrom(src => src.SupplierId));
+                .ForMember(dest => dest.SupplierId, opt => opt.MapFrom(src => src.SupplierId))
+                .ForMember(dest => dest.BusinessPartnerId, opt => opt.MapFrom(src => src.BusinessPartnerId));
 
             // Customer mappings
             CreateMap<Customer, CustomerDto>();
@@ -149,6 +156,16 @@ namespace NexusAs.Application.Mappings
                     opt => opt.MapFrom(src => src.Type.ToString()))
                 .ForMember(dest => dest.SaleNumber,
                     opt => opt.MapFrom(src => src.Sale != null ? src.Sale.SaleNumber : null));
+
+            // BusinessPartner mappings
+            CreateMap<BusinessPartner, BusinessPartnerDto>()
+                .ForMember(dest => dest.ProductCount,
+                    opt => opt.MapFrom(src => src.Products != null
+                        ? src.Products.Count(p => p.IsActive)
+                        : 0));
+            
+            CreateMap<CreateBusinessPartnerDto, BusinessPartner>();
+            CreateMap<UpdateBusinessPartnerDto, BusinessPartner>();
         }
     }
 }

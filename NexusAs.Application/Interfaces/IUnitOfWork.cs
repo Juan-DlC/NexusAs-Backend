@@ -23,5 +23,8 @@ namespace NexusAs.Application.Interfaces
         IRepository<CreditPayment> CreditPayments { get; }
         IRepository<Return> Returns { get; }
         IRepository<ReturnDetail> ReturnDetails { get; }
+        IBusinessPartnerRepository BusinessPartners { get; }
+        IRepository<BusinessPartnerLiquidation> BusinessPartnerLiquidations { get; }
+        IRepository<BusinessPartnerLiquidationDetail> BusinessPartnerLiquidationDetails { get; }
     }
 }

@@ -61,6 +61,9 @@ namespace NexusAs.Infrastructure.Repositories
         private IRepository<CreditPayment>? _creditPayments;
         private IRepository<Return>? _returns;
         private IRepository<ReturnDetail>? _returnDetails;
+        private IBusinessPartnerRepository? _businessPartners;
+        private IRepository<BusinessPartnerLiquidation>? _businessPartnerLiquidations;
+        private IRepository<BusinessPartnerLiquidationDetail>? _businessPartnerLiquidationDetails;
 
         public IRepository<CreditInstallment> CreditInstallments =>
             _creditInstallments ??= new BaseRepository<CreditInstallment>(_context);
@@ -73,6 +76,15 @@ namespace NexusAs.Infrastructure.Repositories
 
         public IRepository<ReturnDetail> ReturnDetails =>
             _returnDetails ??= new BaseRepository<ReturnDetail>(_context);
+
+        public IBusinessPartnerRepository BusinessPartners =>
+            _businessPartners ??= new BusinessPartnerRepository(_context);
+
+        public IRepository<BusinessPartnerLiquidation> BusinessPartnerLiquidations =>
+            _businessPartnerLiquidations ??= new BaseRepository<BusinessPartnerLiquidation>(_context);
+
+        public IRepository<BusinessPartnerLiquidationDetail> BusinessPartnerLiquidationDetails =>
+            _businessPartnerLiquidationDetails ??= new BaseRepository<BusinessPartnerLiquidationDetail>(_context);
 
         public async Task<int> SaveChangesAsync()
         {

@@ -34,6 +34,7 @@ namespace NexusAs.DI.Extensions
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IPartnerService, PartnerService>();
             services.AddScoped<IReturnService, ReturnService>();
+            services.AddScoped<IBusinessPartnerService, BusinessPartnerService>();
 
             return services;
         }

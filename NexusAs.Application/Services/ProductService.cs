@@ -71,7 +71,20 @@ namespace NexusAs.Application.Services
                     throw new BusinessException("El proveedor seleccionado no existe.");
             }
 
+            // Validar BusinessPartner si se proporciona
+            if (dto.BusinessPartnerId.HasValue)
+            {
+                var businessPartnerExists = await _unitOfWork.BusinessPartners
+                    .ExistsAsync(bp => bp.Id == dto.BusinessPartnerId.Value && bp.IsActive);
+                if (!businessPartnerExists)
+                    throw new BusinessException("El socio comercial seleccionado no existe.");
+            }
+
             var product = _mapper.Map<Product>(dto);
+            
+            // Sincronizar IsPartnership con BusinessPartnerId
+            product.IsPartnership = dto.BusinessPartnerId.HasValue;
+            
             await _unitOfWork.Products.AddAsync(product);
             await _unitOfWork.SaveChangesAsync();
             return _mapper.Map<ProductDto>(product);
@@ -102,7 +115,20 @@ namespace NexusAs.Application.Services
                     throw new BusinessException("El proveedor seleccionado no existe.");
             }
 
+            // Validar BusinessPartner si se proporciona
+            if (dto.BusinessPartnerId.HasValue)
+            {
+                var businessPartnerExists = await _unitOfWork.BusinessPartners
+                    .ExistsAsync(bp => bp.Id == dto.BusinessPartnerId.Value && bp.IsActive);
+                if (!businessPartnerExists)
+                    throw new BusinessException("El socio comercial seleccionado no existe.");
+            }
+
             _mapper.Map(dto, product);
+            
+            // Sincronizar IsPartnership con BusinessPartnerId
+            product.IsPartnership = dto.BusinessPartnerId.HasValue;
+            
             _unitOfWork.Products.Update(product);
             await _unitOfWork.SaveChangesAsync();
             return _mapper.Map<ProductDto>(product);

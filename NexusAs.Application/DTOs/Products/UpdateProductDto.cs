@@ -19,5 +19,6 @@ namespace NexusAs.Application.DTOs.Products
         public int CategoryId { get; set; }
         public int? SupplierId { get; set; }
         public bool IsPartnership { get; set; }
+        public int? BusinessPartnerId { get; set; }
     }
 }

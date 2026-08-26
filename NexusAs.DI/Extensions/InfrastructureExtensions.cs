@@ -25,6 +25,7 @@ namespace NexusAs.DI.Extensions
             services.AddScoped<ISaleRepository, SaleRepository>();
             services.AddScoped<IProductRepository, ProductRepository>();
             services.AddScoped<ICreditRepository, CreditRepository>();
+            services.AddScoped<IBusinessPartnerRepository, BusinessPartnerRepository>();
 
             services.AddControllers(options =>
             {

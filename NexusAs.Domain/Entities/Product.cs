@@ -25,5 +25,9 @@ namespace NexusAs.Domain.Entities
         public ICollection<ReturnDetail> ReturnDetails { get; set; } = new List<ReturnDetail>();
         public ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
         public bool IsPartnership { get; set; } = false;
+        
+        // Relación con Socio Comercial externo
+        public int? BusinessPartnerId { get; set; }
+        public BusinessPartner? BusinessPartner { get; set; }
     }
 }
