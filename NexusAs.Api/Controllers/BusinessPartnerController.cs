@@ -87,10 +87,16 @@ namespace NexusAs.Api.Controllers
         [HttpGet("{businessPartnerId}/liquidation/preview")]
         public async Task<ActionResult<ApiResponse<BusinessPartnerLiquidationPreviewDto>>> PreviewLiquidation(
             int businessPartnerId,
-            [FromQuery] DateTime fromDate,
-            [FromQuery] DateTime toDate)
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] DateTime? from = null,
+            [FromQuery] DateTime? to = null)
         {
-            var result = await _service.PreviewLiquidationAsync(businessPartnerId, fromDate, toDate);
+            // Permitir tanto fromDate/toDate como from/to para compatibilidad con frontend
+            var startDate = fromDate ?? from ?? DateTime.Today.AddMonths(-1);
+            var endDate = toDate ?? to ?? DateTime.Today.AddDays(1).AddSeconds(-1);
+            
+            var result = await _service.PreviewLiquidationAsync(businessPartnerId, startDate, endDate);
             return Ok(ApiResponse<BusinessPartnerLiquidationPreviewDto>.Success(result));
         }
 
@@ -116,6 +122,25 @@ namespace NexusAs.Api.Controllers
         [HttpGet("liquidations")]
         public async Task<ActionResult<ApiResponse<PagedResponseDto<BusinessPartnerLiquidationDto>>>> GetLiquidations(
             [FromQuery] int? businessPartnerId = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var result = await _service.GetLiquidationsAsync(
+                businessPartnerId, 
+                fromDate, 
+                toDate, 
+                pageNumber, 
+                pageSize);
+            
+            return Ok(ApiResponse<PagedResponseDto<BusinessPartnerLiquidationDto>>.Success(result));
+        }
+
+        // Endpoint alternativo para obtener liquidaciones de un socio específico
+        [HttpGet("{businessPartnerId}/liquidations")]
+        public async Task<ActionResult<ApiResponse<PagedResponseDto<BusinessPartnerLiquidationDto>>>> GetLiquidationsByBusinessPartner(
+            int businessPartnerId,
             [FromQuery] DateTime? fromDate = null,
             [FromQuery] DateTime? toDate = null,
             [FromQuery] int pageNumber = 1,
