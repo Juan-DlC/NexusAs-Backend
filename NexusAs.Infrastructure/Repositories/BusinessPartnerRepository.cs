@@ -78,7 +78,12 @@ namespace NexusAs.Infrastructure.Repositories
                     // BUG FIX: La venta está completamente pagada si:
                     // - No tiene crédito (es contado) O
                     // - Tiene crédito y está pagado
-                    (sd.Sale.Credit == null || sd.Sale.Credit.Status == Domain.Enums.CreditStatus.Paid))
+                    (sd.Sale.Credit == null || sd.Sale.Credit.Status == Domain.Enums.CreditStatus.Paid) &&
+                    // EXCLUIR ventas ya liquidadas para este socio comercial
+                    !_context.BusinessPartnerLiquidationDetails
+                        .Any(bpld => bpld.SaleId == sd.SaleId && 
+                                   bpld.Liquidation.BusinessPartnerId == businessPartnerId && 
+                                   bpld.Liquidation.IsActive))
                 .ToListAsync();
         }
 

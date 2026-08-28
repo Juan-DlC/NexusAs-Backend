@@ -134,21 +134,28 @@ namespace NexusAs.Application.Services
                 throw new NotFoundException(nameof(BusinessPartner), businessPartnerId);
 
             // Obtener todas las ventas de productos asociados al socio comercial en el rango de fechas
+            // NOTA: Las ventas ya liquidadas se excluyen automáticamente en el repositorio
             var sales = await _unitOfWork.BusinessPartners
                 .GetSaleDetailsByBusinessPartnerAndDateRangeAsync(businessPartnerId, fromDate, toDate);
 
-            // Verificar que no hayan sido liquidadas previamente
-            var saleIds = sales.Select(sd => sd.SaleId).Distinct().ToList();
-            var alreadyLiquidated = await _unitOfWork.BusinessPartners
-                .GetAlreadyLiquidatedSaleIdsAsync(saleIds);
-
-            if (alreadyLiquidated.Any())
+            // Si no hay ventas disponibles, devolver preview vacío (sin error)
+            if (!sales.Any())
             {
-                throw new BusinessException(
-                    $"Algunas ventas ya fueron liquidadas previamente. Facturas: {string.Join(", ", 
-                        sales.Where(sd => alreadyLiquidated.Contains(sd.SaleId))
-                            .Select(sd => sd.Sale.SaleNumber)
-                            .Distinct())}");
+                return new BusinessPartnerLiquidationPreviewDto
+                {
+                    BusinessPartnerId = businessPartnerId,
+                    BusinessPartnerName = businessPartner.Name,
+                    CommissionPercent = businessPartner.CommissionPercent,
+                    FromDate = fromDate,
+                    ToDate = toDate,
+                    Sales = new List<LiquidationSaleDetailDto>(),
+                    TotalGrossProfit = 0,
+                    TotalPartnerCommission = 0,
+                    TotalRemainingProfit = 0,
+                    TotalBusinessPartnerAmount = 0,
+                    TotalAsAmount = 0,
+                    TotalSales = 0
+                };
             }
 
             // Calcular detalles de liquidación
