@@ -69,10 +69,10 @@ namespace NexusAs.Infrastructure.Services
                         {
                             table.ColumnsDefinition(c =>
                             {
-                                c.ConstantColumn(60);
-                                c.RelativeColumn();
-                                c.RelativeColumn(2);
-                                c.ConstantColumn(80);
+                                c.ConstantColumn(55);  // Código — fijo, nunca crece
+                                c.RelativeColumn(3);   // Producto
+                                c.RelativeColumn(2);   // Descripción
+                                c.ConstantColumn(80);  // Precio
                             });
 
                             table.Header(header =>
@@ -90,7 +90,7 @@ namespace NexusAs.Infrastructure.Services
                                 var bg = productsList.IndexOf(product) % 2 == 0
                                     ? "#FFFFFF" : _reportStyle.ColorFondoSuave;
                                 table.Cell().Background(bg).Padding(5)
-                                    .Text(product.Code);
+                                    .Text(product.Code ?? "-").FontSize(8).ClampLines(1);
                                 table.Cell().Background(bg).Padding(5)
                                     .Text(product.Name).Bold();
                                 table.Cell().Background(bg).Padding(5)

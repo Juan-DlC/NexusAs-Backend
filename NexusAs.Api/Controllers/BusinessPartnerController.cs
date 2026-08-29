@@ -66,10 +66,10 @@ namespace NexusAs.Api.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
-        public async Task<ActionResult<ApiResponse<object>>> Delete(int id)
+        public async Task<ActionResult<ApiResponse<object?>>> Delete(int id)
         {
             await _service.DeleteAsync(id);
-            return Ok(ApiResponse<object>.Success(null, "Socio comercial eliminado exitosamente"));
+            return Ok(ApiResponse<object?>.Success(null, "Socio comercial eliminado exitosamente"));
         }
 
         [Authorize(Roles = "Admin")]
@@ -160,7 +160,9 @@ namespace NexusAs.Api.Controllers
         public async Task<ActionResult<ApiResponse<BusinessPartnerLiquidationDto>>> GetLiquidationById(int id)
         {
             var result = await _service.GetLiquidationByIdAsync(id);
-            return Ok(ApiResponse<BusinessPartnerLiquidationDto>.Success(result!));
+            if (result == null)
+                return NotFound(ApiResponse<BusinessPartnerLiquidationDto>.Fail("Liquidación no encontrada"));
+            return Ok(ApiResponse<BusinessPartnerLiquidationDto>.Success(result));
         }
 
         [HttpGet("liquidations/{liquidationId}/pdf")]

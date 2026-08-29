@@ -145,6 +145,18 @@ namespace NexusAs.Infrastructure.Services
                                 row.RelativeItem().AlignRight().Text($"${asAmount:N0}").Bold().FontSize(14).FontColor("#2C3E50");
                             });
                         });
+
+                        // Notas si existen
+                        if (!string.IsNullOrEmpty(liquidation.Notes))
+                        {
+                            column.Item().Height(10);
+                            column.Item().Background("#ECF0F1").Padding(10).Column(noteCol =>
+                            {
+                                noteCol.Item().Text("Notas:").Bold().FontSize(10);
+                                noteCol.Item().Height(3);
+                                noteCol.Item().Text(liquidation.Notes).FontSize(9).Italic();
+                            });
+                        }
                     });
 
                     page.Footer().AlignCenter().Text(text =>

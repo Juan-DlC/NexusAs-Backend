@@ -171,10 +171,12 @@ namespace NexusAs.Application.Services
             {
                 discount = dto.DiscountAmount.Value;
             }
-            else if (dto.Discount > 0)  // Compatibilidad con versión anterior
+#pragma warning disable CS0618 // Compatibilidad con versión anterior
+            else if (dto.Discount > 0)
             {
                 discount = dto.Discount;
             }
+#pragma warning restore CS0618
             
             var total = subtotal - discount;
 

@@ -165,14 +165,14 @@ namespace NexusAs.Application.Services
             {
                 // FÓRMULA CORRECTA:
                 // 1. GananciaBruta = SalePrice - Cost
-                var grossProfit = (saleDetail.Product.SalePrice - saleDetail.Product.Cost) * saleDetail.Quantity;
+                var grossProfit = (saleDetail.Product!.SalePrice - saleDetail.Product.Cost) * saleDetail.Quantity;
 
                 // 2. Determinar comisión para socias vendedoras
                 var partnerCommissionPercent = 0m;
                 var partnerCommissionAmount = 0m;
 
                 // Si la venta fue hecha por una socia (Partner role)
-                if (saleDetail.Sale.User.Role == Domain.Enums.UserRole.Partner)
+                if (saleDetail.Sale!.User?.Role == Domain.Enums.UserRole.Partner)
                 {
                     var partnerConfigs = await _unitOfWork.PartnerConfigs
                         .FindAsync(pc => pc.UserId == saleDetail.Sale.UserId && pc.IsActive);
@@ -200,12 +200,12 @@ namespace NexusAs.Application.Services
                 details.Add(new LiquidationSaleDetailDto
                 {
                     SaleId = saleDetail.SaleId,
-                    SaleNumber = saleDetail.Sale.SaleNumber,
+                    SaleNumber = saleDetail.Sale!.SaleNumber,
                     SaleDate = saleDetail.Sale.Date,
                     SellerName = saleDetail.Sale.User?.FullName ?? "Sin vendedor",
                     PaymentMethodName = saleDetail.Sale.PaymentMethodEntity?.Name ?? "Contado",
                     ProductId = saleDetail.ProductId,
-                    ProductCode = saleDetail.Product.Code,
+                    ProductCode = saleDetail.Product!.Code,
                     ProductName = saleDetail.Product.Name,
                     Quantity = saleDetail.Quantity,
                     CostPrice = saleDetail.Product.Cost,

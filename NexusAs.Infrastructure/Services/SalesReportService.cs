@@ -26,6 +26,7 @@ namespace NexusAs.Infrastructure.Services
 
             var sales = await _context.Sales
                 .Include(s => s.Customer)
+                .Include(s => s.PaymentMethodEntity)
                 .Where(s => s.IsActive && s.Date >= from && s.Date <= to)
                 .ToListAsync();
             var salesList = sales.ToList();
@@ -171,6 +172,7 @@ namespace NexusAs.Infrastructure.Services
         {
             var sales = await _context.Sales
                 .Include(s => s.Customer)
+                .Include(s => s.PaymentMethodEntity)
                 .Where(s => s.IsActive && s.Date >= from && s.Date <= to)
                 .ToListAsync();
             var salesList = sales.ToList();

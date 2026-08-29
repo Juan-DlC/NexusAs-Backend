@@ -59,6 +59,7 @@ namespace NexusAs.Infrastructure.Repositories
             DateTime fromDate,
             DateTime toDate)
         {
+#pragma warning disable CS8602 // Dereference of a possibly null reference - garantizado por WHERE filter
             // BUG FIX: Incluir Credit y PaymentMethodEntity para determinar si está pagada
             return await _context.SaleDetails
                 .Include(sd => sd.Sale)
@@ -70,7 +71,9 @@ namespace NexusAs.Infrastructure.Repositories
                 .Include(sd => sd.Product)
                     .ThenInclude(p => p.BusinessPartner)
                 .Where(sd =>
+                    sd.Product != null &&
                     sd.Product.BusinessPartnerId == businessPartnerId &&
+                    sd.Sale != null &&
                     sd.Sale.Date >= fromDate &&
                     sd.Sale.Date <= toDate &&
                     sd.Sale.IsActive &&
@@ -82,9 +85,10 @@ namespace NexusAs.Infrastructure.Repositories
                     // EXCLUIR ventas ya liquidadas para este socio comercial
                     !_context.BusinessPartnerLiquidationDetails
                         .Any(bpld => bpld.SaleId == sd.SaleId && 
-                                   bpld.Liquidation.BusinessPartnerId == businessPartnerId && 
+                                   bpld.Liquidation!.BusinessPartnerId == businessPartnerId && 
                                    bpld.Liquidation.IsActive))
                 .ToListAsync();
+#pragma warning restore CS8602
         }
 
         public async Task<List<int>> GetAlreadyLiquidatedSaleIdsAsync(List<int> saleIds)

@@ -11,8 +11,14 @@ namespace NexusAs.Application.Validators
             RuleFor(x => x.PaymentMethodId)
                 .GreaterThan(0).WithMessage("Debe seleccionar un método de pago válido.");
 
-            RuleFor(x => x.Discount)
-                .GreaterThanOrEqualTo(0).WithMessage("El descuento no puede ser negativo.");
+            // Validar descuentos: solo debe usarse uno de los tres campos
+            RuleFor(x => x.DiscountPercent)
+                .GreaterThanOrEqualTo(0).When(x => x.DiscountPercent.HasValue)
+                .WithMessage("El porcentaje de descuento no puede ser negativo.");
+
+            RuleFor(x => x.DiscountAmount)
+                .GreaterThanOrEqualTo(0).When(x => x.DiscountAmount.HasValue)
+                .WithMessage("El monto de descuento no puede ser negativo.");
 
             RuleFor(x => x.Details)
                 .NotEmpty().WithMessage("La venta debe tener al menos un producto.");
