@@ -308,5 +308,170 @@ namespace NexusAs.Infrastructure.Services
 
             return document.GeneratePdf();
         }
+
+        public async Task<byte[]> GeneratePartnerSaleReceiptAsync(int saleId)
+        {
+            QuestPDF.Settings.License = LicenseType.Community;
+
+            var sale = await _context.Sales
+                .Include(s => s.User)
+                .Include(s => s.PaymentMethodEntity)
+                .Include(s => s.SaleDetails)
+                    .ThenInclude(sd => sd.Product)
+                .Include(s => s.Credit)
+                .FirstOrDefaultAsync(s => s.Id == saleId);
+
+            if (sale == null)
+                throw new Exception($"Venta con id {saleId} no encontrada.");
+
+            var seller = sale.User;
+
+            // Cargar logo
+            byte[]? logoBytes = null;
+            if (File.Exists(_reportStyle.LogoPath))
+                logoBytes = File.ReadAllBytes(_reportStyle.LogoPath);
+
+            var document = Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(35);
+                    page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(9));
+
+                    page.Header().Element(header =>
+                    {
+                        header.Row(row =>
+                        {
+                            // Logo
+                            row.ConstantItem(70).Element(logo =>
+                            {
+                                if (logoBytes != null)
+                                    logo.Image(logoBytes).FitArea();
+                                else
+                                    logo.Text("AS").Bold().FontSize(20).FontColor(_reportStyle.ColorPrincipal);
+                            });
+
+                            row.RelativeItem().Column(col =>
+                            {
+                                col.Item().Text("AS ACCESORIOS").Bold().FontSize(14).FontColor(_reportStyle.ColorPrincipal);
+                                col.Item().Text("FACTURA SOCIA VENDEDORA").Bold().FontSize(11).FontColor(_reportStyle.ColorAcento);
+                                col.Item().Height(4);
+                                col.Item().Text($"Factura: {sale.SaleNumber}").Bold();
+                                col.Item().Text($"Fecha: {sale.Date:dd/MM/yyyy}");
+                                col.Item().Text($"Socia: {seller?.FullName ?? "Sin nombre"}");
+                                col.Item().Text($"Método de pago: {sale.PaymentMethodEntity?.Name ?? "Contado"}");
+                                if (!string.IsNullOrEmpty(sale.Notes))
+                                    col.Item().Text($"Notas: {sale.Notes}");
+                            });
+                        });
+                    });
+
+                    page.Content().PaddingTop(20).Element(content =>
+                    {
+                        content.Column(col =>
+                        {
+                            // Tabla de productos
+                            col.Item().Table(table =>
+                            {
+                                table.ColumnsDefinition(c =>
+                                {
+                                    c.RelativeColumn(3);  // Producto
+                                    c.ConstantColumn(40); // Cant.
+                                    c.RelativeColumn(2);  // Te cuesta c/u
+                                    c.RelativeColumn(2);  // Total a pagar
+                                    c.RelativeColumn(2);  // Precio sugerido
+                                });
+
+                                // Header de tabla
+                                static IContainer HeaderCell(IContainer container) =>
+                                    container.Background("#2C3E50").Padding(5).AlignCenter();
+
+                                table.Header(header =>
+                                {
+                                    header.Cell().Element(HeaderCell).Text("Producto").Bold().FontColor(Colors.White).FontSize(8);
+                                    header.Cell().Element(HeaderCell).Text("Cant.").Bold().FontColor(Colors.White).FontSize(8);
+                                    header.Cell().Element(HeaderCell).Text("Te cuesta c/u").Bold().FontColor(Colors.White).FontSize(8);
+                                    header.Cell().Element(HeaderCell).Text("Total a pagar").Bold().FontColor(Colors.White).FontSize(8);
+                                    header.Cell().Element(HeaderCell).Text("Precio sugerido").Bold().FontColor(Colors.White).FontSize(8);
+                                });
+
+                                // Filas de productos
+                                bool alternate = false;
+                                foreach (var detail in sale.SaleDetails)
+                                {
+                                    var bg = alternate ? _reportStyle.ColorFondoSuave : "#FFFFFF";
+                                    alternate = !alternate;
+
+                                    // CORRECCIÓN: detail.UnitPrice YA ES el precio que se le dio a la socia
+                                    var partnerPrice = detail.UnitPrice;
+                                    var suggestedPrice = detail.Product?.SalePrice ?? detail.UnitPrice;
+                                    var totalToPay = partnerPrice * detail.Quantity;
+
+                                    IContainer DataCell(IContainer c) =>
+                                        c.Background(bg).Padding(5);
+
+                                    table.Cell().Element(DataCell).Column(nameCol =>
+                                    {
+                                        nameCol.Item().Text(detail.Product?.Name ?? "-").FontSize(8);
+                                        if (detail.Product?.IsPartnership == true)
+                                            nameCol.Item().Text("Alianza").FontSize(7).FontColor(_reportStyle.ColorAcento);
+                                    });
+
+                                    table.Cell().Element(DataCell).AlignCenter().Text(detail.Quantity.ToString()).FontSize(8);
+                                    table.Cell().Element(DataCell).AlignRight().Text($"${partnerPrice:N0}").FontSize(8).Bold().FontColor(_reportStyle.ColorPrincipal);
+                                    table.Cell().Element(DataCell).AlignRight().Text($"${totalToPay:N0}").FontSize(8).Bold();
+                                    table.Cell().Element(DataCell).AlignRight().Text($"${suggestedPrice:N0}").FontSize(8).FontColor(_reportStyle.ColorExito);
+                                }
+                            });
+
+                            // Espacio
+                            col.Item().Height(16);
+
+                            // Resumen financiero
+                            col.Item().Background(_reportStyle.ColorFondoSuave).Padding(12).Column(summary =>
+                            {
+                                summary.Item().Row(row =>
+                                {
+                                    row.RelativeItem().Text("TOTAL A PAGAR A AS:").Bold().FontSize(11);
+                                    row.ConstantItem(120).AlignRight().Text($"${sale.Total:N0}").Bold().FontSize(13).FontColor(_reportStyle.ColorPrincipal);
+                                });
+
+                                // Mostrar crédito si existe
+                                if (sale.Credit != null)
+                                {
+                                    col.Item().Height(8);
+                                    summary.Item().Row(row =>
+                                    {
+                                        row.RelativeItem().Text("Abonado:").FontSize(9);
+                                        row.ConstantItem(120).AlignRight().Text($"${sale.Credit.PaidAmount:N0}").FontSize(9).FontColor(_reportStyle.ColorExito);
+                                    });
+                                    summary.Item().Row(row =>
+                                    {
+                                        row.RelativeItem().Text("Saldo pendiente:").Bold().FontSize(10);
+                                        row.ConstantItem(120).AlignRight().Text($"${sale.Credit.PendingAmount:N0}").Bold().FontSize(11).FontColor(_reportStyle.ColorAlerta);
+                                    });
+                                }
+                            });
+
+                            // Nota informativa
+                            col.Item().Height(12);
+                            col.Item().Background("#EFF8FF").Padding(10).Column(note =>
+                            {
+                                note.Item().Text("ℹ️ Información de precios").Bold().FontSize(8).FontColor(_reportStyle.ColorPrincipal);
+                                note.Item().Height(4);
+                                note.Item().Text("• Te cuesta c/u: Precio al que AS te entrega cada producto").FontSize(7).FontColor("#555555");
+                                note.Item().Text("• Precio sugerido: Precio recomendado de venta al público").FontSize(7).FontColor("#555555");
+                            });
+                        });
+                    });
+
+                    page.Footer().AlignCenter().Text($"Documento generado el {DateTime.Now:dd/MM/yyyy HH:mm} — AS Accesorios")
+                        .FontSize(7).FontColor(Colors.Grey.Medium);
+                });
+            });
+
+            return document.GeneratePdf();
+        }
     }
 }

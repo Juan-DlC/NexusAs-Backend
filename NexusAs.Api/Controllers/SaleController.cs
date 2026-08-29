@@ -52,6 +52,14 @@ using NexusAs.Application.DTOs.Sales;
                 return File(pdf, "application/pdf", $"Recibo_{id}.pdf");
             }
 
+            [HttpGet("{id}/partner-receipt")]
+            [Authorize(Roles = "Admin")]
+            public async Task<IActionResult> GetPartnerReceipt(int id)
+            {
+                var pdfBytes = await _receiptService.GeneratePartnerSaleReceiptAsync(id);
+                return File(pdfBytes, "application/pdf", $"factura-socia-{id}.pdf");
+            }
+
             [HttpPost]
             public async Task<IActionResult> Create([FromBody] CreateSaleDto dto)
             {
