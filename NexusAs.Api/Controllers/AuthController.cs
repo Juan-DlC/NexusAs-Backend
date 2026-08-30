@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using NexusAs.Application.DTOs.Auth;
 using NexusAs.Application.Interfaces;
 using NexusAs.Api.Responses;
@@ -16,6 +17,7 @@ namespace NexusAs.Api.Controllers
             _authService = authService;
         }
 
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
@@ -23,6 +25,8 @@ namespace NexusAs.Api.Controllers
             return Ok(ApiResponse<TokenDto>.Success(token, "Login exitoso."));
         }
 
+        // SEGURIDAD: Solo administradores pueden crear nuevos usuarios
+        [Authorize(Roles = "Admin")]
         [HttpPost("register")]
         public async Task<IActionResult> Register(
             [FromQuery] string username,
