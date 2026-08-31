@@ -79,12 +79,18 @@ namespace NexusAs.Application.Services
                     return _mapper.Map<SaleDto>(existing);
             }
             
+            // Filtrar detalles vacíos (ProductId <= 0) antes de procesar
+            var validDetails = dto.Details.Where(d => d.ProductId > 0).ToList();
+            
+            if (!validDetails.Any())
+                throw new BusinessException("La venta debe tener al menos un producto válido.");
+            
             // TAREA 1: OPTIMIZACIÓN - Cargar TODOS los productos necesarios en UNA sola consulta
-            var productIds = dto.Details.Select(d => d.ProductId).Distinct().ToList();
+            var productIds = validDetails.Select(d => d.ProductId).Distinct().ToList();
             var products = await _productRepository.GetProductsByIdsAsync(productIds);
 
             // Validar stock de todos los productos antes de crear la venta
-            foreach (var detail in dto.Details)
+            foreach (var detail in validDetails)
             {
                 if (!products.TryGetValue(detail.ProductId, out var product))
                     throw new NotFoundException(nameof(Product), detail.ProductId);
@@ -125,7 +131,7 @@ namespace NexusAs.Application.Services
             // Calcular automáticamente precio de socia si UnitPrice es 0
             if (partnerConfig != null)
             {
-                foreach (var detailDto in dto.Details)
+                foreach (var detailDto in validDetails)
                 {
                     if (detailDto.UnitPrice <= 0)
                     {
@@ -155,8 +161,8 @@ namespace NexusAs.Application.Services
             }
             var saleNumber = $"FAC-{nextNumber:D4}";
             
-            // Calcular totales
-            var subtotal = dto.Details.Sum(d => d.Quantity * d.UnitPrice);
+            // Calcular totales (usando solo detalles válidos)
+            var subtotal = validDetails.Sum(d => d.Quantity * d.UnitPrice);
             
             // Calcular descuento por porcentaje o monto fijo
             decimal discount = 0;
@@ -199,8 +205,8 @@ namespace NexusAs.Application.Services
             await _unitOfWork.Sales.AddAsync(sale);
             await _unitOfWork.SaveChangesAsync();
 
-            // Crear detalles, descontar stock y registrar movimientos
-            foreach (var detailDto in dto.Details)
+            // Crear detalles, descontar stock y registrar movimientos (solo detalles válidos)
+            foreach (var detailDto in validDetails)
             {
                 if (!products.TryGetValue(detailDto.ProductId, out var product))
                     continue; // Ya validado anteriormente
@@ -278,10 +284,10 @@ namespace NexusAs.Application.Services
                 }
             }
 
-            // Si el vendedor es Partner, registrar ganancias
+            // Si el vendedor es Partner, registrar ganancias (solo detalles válidos)
             if (userExists.Role == UserRole.Partner && partnerConfig != null)
             {
-                foreach (var detailDto in dto.Details)
+                foreach (var detailDto in validDetails)
                 {
                     if (!products.TryGetValue(detailDto.ProductId, out var product))
                         continue;

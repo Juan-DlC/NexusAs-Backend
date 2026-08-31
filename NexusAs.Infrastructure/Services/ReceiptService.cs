@@ -27,9 +27,9 @@ namespace NexusAs.Infrastructure.Services
                 .Include(s => s.Customer)
                 .Include(s => s.User)
                 .Include(s => s.ProcessedByUser)  // BUG 1 FIX: Incluir quien procesó la venta
+                .Include(s => s.PaymentMethodEntity)  // FIX: Incluir método de pago para el PDF
                 .Include(s => s.SaleDetails)
                     .ThenInclude(sd => sd.Product)
-                .Include(s => s.Credit)
                 .Include(s => s.Credit)
                     .ThenInclude(c => c!.Installments)
                 .FirstOrDefaultAsync(s => s.Id == saleId);
