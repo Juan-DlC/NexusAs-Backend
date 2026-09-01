@@ -16,11 +16,13 @@ using NexusAs.Application.DTOs.Sales;
         {
             private readonly ISaleService _saleService;
             private readonly IReceiptService _receiptService;
+            private readonly ILogger<SaleController> _logger;
 
-            public SaleController(ISaleService saleService, IReceiptService receiptService)
+            public SaleController(ISaleService saleService, IReceiptService receiptService, ILogger<SaleController> logger)
             {
                 _saleService = saleService;
                 _receiptService = receiptService;
+                _logger = logger;
             }
 
             [HttpGet]
@@ -65,6 +67,8 @@ using NexusAs.Application.DTOs.Sales;
             {
                 var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
                 var sale = await _saleService.CreateAsync(dto, userId);
+                _logger.LogInformation("Venta {SaleNumber} creada por usuario {UserId}. Total: {Total:C}",
+                    sale.SaleNumber, userId, sale.Total);
                 return CreatedAtAction(nameof(GetById),
                     new { id = sale.Id },
                     ApiResponse<SaleDto>.Success(sale, "Venta registrada exitosamente."));

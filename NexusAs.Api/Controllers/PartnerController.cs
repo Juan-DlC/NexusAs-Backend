@@ -15,10 +15,12 @@ namespace NexusAs.Api.Controllers
     public class PartnerController : ControllerBase
     {
         private readonly IPartnerService _partnerService;
+        private readonly ILogger<PartnerController> _logger;
 
-        public PartnerController(IPartnerService partnerService)
+        public PartnerController(IPartnerService partnerService, ILogger<PartnerController> logger)
         {
             _partnerService = partnerService;
+            _logger = logger;
         }
 
         [HttpGet("alliance-report")]
@@ -150,7 +152,10 @@ namespace NexusAs.Api.Controllers
         public async Task<IActionResult> RegisterLiquidation(
             int id, [FromBody] RegisterPartnerLiquidationDto dto)
         {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var liquidation = await _partnerService.RegisterLiquidationAsync(id, dto);
+            _logger.LogInformation("Abono ${Amount:N0} registrado para socia {PartnerConfigId} por usuario {UserId}",
+                dto.Amount, id, userId);
             return Ok(ApiResponse<PartnerLiquidationDto>.Success(
                 liquidation, "Liquidación registrada exitosamente."));
         }

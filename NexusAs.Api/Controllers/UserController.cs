@@ -13,10 +13,12 @@ namespace NexusAs.Api.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly ILogger<UserController> _logger;
 
-        public UserController(IUserService userService)
+        public UserController(IUserService userService, ILogger<UserController> logger)
         {
             _userService = userService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -60,6 +62,17 @@ namespace NexusAs.Api.Controllers
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             await _userService.ChangePasswordAsync(userId, dto);
             return Ok(ApiResponse<string>.Success("", "Contraseña actualizada exitosamente."));
+        }
+
+        [HttpPatch("{id}/reset-password")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ResetPassword(int id, [FromBody] ResetPasswordDto dto)
+        {
+            var adminUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            await _userService.ResetPasswordAsync(id, dto);
+            _logger.LogInformation("Contraseña reseteada para usuario {TargetUserId} por Admin {AdminUserId}", 
+                id, adminUserId);
+            return Ok(ApiResponse<string>.Success("", "Contraseña actualizada correctamente."));
         }
     }
 }

@@ -9,5 +9,6 @@ namespace NexusAs.Application.Interfaces
         Task<UserDto> CreateAsync(CreateUserDto dto);
         Task<UserDto> ToggleStatusAsync(int id);
         Task ChangePasswordAsync(int userId, ChangePasswordDto dto);
+        Task ResetPasswordAsync(int userId, ResetPasswordDto dto);
     }
 }

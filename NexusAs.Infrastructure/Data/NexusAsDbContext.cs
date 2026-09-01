@@ -99,6 +99,30 @@ namespace NexusAs.Infrastructure.Data
             modelBuilder.Entity<Product>()
                 .HasIndex(p => new { p.IsActive, p.CategoryId })
                 .HasDatabaseName("IX_Products_IsActive_CategoryId");
+
+            // Índices para BusinessPartnerLiquidation
+            modelBuilder.Entity<BusinessPartnerLiquidation>()
+                .HasIndex(l => l.BusinessPartnerId)
+                .HasDatabaseName("IX_BusinessPartnerLiquidations_BusinessPartnerId");
+
+            modelBuilder.Entity<BusinessPartnerLiquidation>()
+                .HasIndex(l => l.CreatedAt)
+                .HasDatabaseName("IX_BusinessPartnerLiquidations_CreatedAt");
+
+            // Índices para PartnerLiquidation
+            modelBuilder.Entity<PartnerLiquidation>()
+                .HasIndex(l => l.PartnerConfigId)
+                .HasDatabaseName("IX_PartnerLiquidations_PartnerConfigId");
+
+            // Índices para Return
+            modelBuilder.Entity<Return>()
+                .HasIndex(r => r.SaleId)
+                .HasDatabaseName("IX_Returns_SaleId");
+
+            // Índices para CreditPayment
+            modelBuilder.Entity<CreditPayment>()
+                .HasIndex(cp => cp.CreditId)
+                .HasDatabaseName("IX_CreditPayments_CreditId");
         }
 
     }

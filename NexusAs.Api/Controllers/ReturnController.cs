@@ -14,10 +14,12 @@ namespace NexusAs.Api.Controllers
     public class ReturnController : ControllerBase
     {
         private readonly IReturnService _returnService;
+        private readonly ILogger<ReturnController> _logger;
 
-        public ReturnController(IReturnService returnService)
+        public ReturnController(IReturnService returnService, ILogger<ReturnController> logger)
         {
             _returnService = returnService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -58,6 +60,8 @@ namespace NexusAs.Api.Controllers
                 return Unauthorized(ApiResponse<string>.Fail("Usuario no autenticado."));
 
                 var returnEntity = await _returnService.CreateAsync(dto, userId);
+            _logger.LogInformation("Devolución procesada para venta {SaleId} por usuario {UserId}. Monto: ${TotalReturned:N0}",
+                dto.SaleId, userId, returnEntity.TotalAmount);
             return CreatedAtAction(nameof(GetById),
                 new { id = returnEntity.Id },
                 ApiResponse<ReturnDto>.Success(returnEntity, "Devolución procesada exitosamente."));

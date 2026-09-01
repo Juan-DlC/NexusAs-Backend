@@ -53,224 +53,47 @@ namespace NexusAs.Application.Services
 
         public async Task<ReturnDto> CreateAsync(CreateReturnDto dto, int userId)
         {
-            // 1. Obtener la venta con sus detalles
-            var sale = await _unitOfWork.Sales.GetSaleByIdWithDetailsAsync(dto.SaleId);
-            if (sale == null)
-                throw new NotFoundException(nameof(Sale), dto.SaleId);
+            var sale = await GetAndValidateSaleAsync(dto.SaleId);
+            ValidateReturnDetails(dto, sale);
 
-            // 2. Validar que los productos devueltos pertenezcan a la venta
-            foreach (var detail in dto.Details)
-            {
-                var saleDetail = sale.SaleDetails.FirstOrDefault(sd => sd.ProductId == detail.ProductId);
-                if (saleDetail == null)
-                    throw new BusinessException(
-                        $"El producto ID {detail.ProductId} no pertenece a esta venta.");
-
-                if (detail.Quantity > saleDetail.Quantity)
-                    throw new BusinessException(
-                        $"La cantidad a devolver ({detail.Quantity}) excede la cantidad vendida ({saleDetail.Quantity}).");
-            }
-
-            // 3. Determinar el tipo de devolución (Cliente o Socia)
+            var returnNumber = $"DEV-{DateTime.Now:yyyyMMddHHmmss}";
             var seller = await _unitOfWork.Users.GetByIdAsync(sale.UserId);
             var returnType = seller?.Role == UserRole.Partner 
                 ? ReturnType.PartnerReturn 
                 : ReturnType.CustomerReturn;
 
-            // 4. Crear la devolución
-            decimal totalAmount = 0;
             var returnEntity = new Return
             {
                 SaleId = dto.SaleId,
                 Date = DateTime.Now,
                 Notes = dto.Notes,
                 UserId = userId,
-                Type = returnType
+                Type = returnType,
+                ReturnDetails = dto.Details.Select(d => new ReturnDetail
+                {
+                    ProductId = d.ProductId,
+                    Quantity = d.Quantity,
+                    UnitPrice = sale.SaleDetails.First(sd => sd.ProductId == d.ProductId).UnitPrice,
+                    Subtotal = d.Quantity * sale.SaleDetails.First(sd => sd.ProductId == d.ProductId).UnitPrice
+                }).ToList()
             };
 
+            returnEntity.TotalAmount = returnEntity.ReturnDetails.Sum(d => d.Subtotal);
             await _unitOfWork.Returns.AddAsync(returnEntity);
-            await _unitOfWork.SaveChangesAsync();
 
-            // 5. Crear detalles de la devolución y procesar cada producto
-            foreach (var detailDto in dto.Details)
-            {
-                var product = await _unitOfWork.Products.GetByIdAsync(detailDto.ProductId);
-                var saleDetail = sale.SaleDetails.First(sd => sd.ProductId == detailDto.ProductId);
+            await ProcessStockReturnAsync(returnEntity, sale, returnNumber, userId);
+            UpdateCreditAfterReturnAsync(sale, returnEntity.TotalAmount);
+            
+            if (returnType == ReturnType.PartnerReturn)
+                await UpdatePartnerSaleAfterReturnAsync(sale, returnEntity.ReturnDetails.ToList());
 
-                // Crear detalle de devolución
-                var returnDetail = new ReturnDetail
-                {
-                    ReturnId = returnEntity.Id,
-                    ProductId = detailDto.ProductId,
-                    Quantity = detailDto.Quantity,
-                    UnitPrice = saleDetail.UnitPrice,
-                    Subtotal = detailDto.Quantity * saleDetail.UnitPrice
-                };
-                await _unitOfWork.ReturnDetails.AddAsync(returnDetail);
-                totalAmount += returnDetail.Subtotal;
-
-                // 6. REINGRESO DE STOCK
-                var stockBefore = product!.Stock;
-                product.Stock += detailDto.Quantity;
-                _unitOfWork.Products.Update(product);
-
-                // Registrar movimiento de stock
-                var stockMovement = new StockMovement
-                {
-                    ProductId = detailDto.ProductId,
-                    Date = DateTime.Now,
-                    Type = MovementType.Entry,
-                    Quantity = detailDto.Quantity,
-                    StockBefore = stockBefore,
-                    StockAfter = product.Stock,
-                    Reason = $"Devolución - Venta {sale.SaleNumber}",
-                    SaleId = sale.Id,
-                    UserId = userId
-                };
-                await _unitOfWork.StockMovements.AddAsync(stockMovement);
-
-                // 6.1 ACTUALIZAR SALEDETAIL
-                saleDetail.Quantity -= detailDto.Quantity;
-                if (saleDetail.Quantity <= 0)
-                {
-                    saleDetail.IsActive = false;
-                    saleDetail.Quantity = 0; // Asegurar que quede en 0, no negativo
-                }
-                saleDetail.Subtotal = saleDetail.Quantity * saleDetail.UnitPrice;
-                _unitOfWork.SaleDetails.Update(saleDetail);
-
-                // 7. DESCUENTO DE GANANCIAS DE SOCIA (si fue venta de Partner)
-                if (returnType == ReturnType.PartnerReturn)
-                {
-                    var partnerSales = await _unitOfWork.PartnerSales.FindAsync(ps =>
-                        ps.SaleId == sale.Id && 
-                        ps.ProductId == detailDto.ProductId &&
-                        ps.IsActive);
-
-                    foreach (var partnerSale in partnerSales)
-                    {
-                        if (partnerSale == null) continue; // Null check
-
-                        // Calcular proporción a descontar
-                        decimal quantityReturned = detailDto.Quantity;
-                        decimal quantitySold = partnerSale.Quantity;
-                        
-                        if (quantitySold <= 0) continue; // Evitar división por cero
-                        
-                        decimal returnRatio = Math.Min(quantityReturned / quantitySold, 1);
-
-                        // Descontar ganancias proporcionalmente
-                        partnerSale.PartnerEarning -= partnerSale.PartnerEarning * returnRatio;
-                        partnerSale.AsEarning -= partnerSale.AsEarning * returnRatio;
-                        partnerSale.Quantity -= (int)quantityReturned;
-
-                        if (partnerSale.Quantity <= 0)
-                        {
-                            // Marcar como inactivo en vez de eliminar (auditoría)
-                            partnerSale.IsActive = false;
-                            partnerSale.Quantity = 0;
-                            _unitOfWork.PartnerSales.Update(partnerSale);
-                        }
-                        else
-                        {
-                            _unitOfWork.PartnerSales.Update(partnerSale);
-                        }
-                    }
-                }
-            }
-
-            // Actualizar total de la devolución
-            returnEntity.TotalAmount = totalAmount;
-            _unitOfWork.Returns.Update(returnEntity);
-
-            // 8.1 RECALCULAR SALE.SUBTOTAL Y SALE.TOTAL (TAREA 3.5)
-            var activeDetails = sale.SaleDetails.Where(sd => sd.IsActive).ToList();
-            sale.Subtotal = activeDetails.Sum(sd => sd.Subtotal);
-            sale.Total = sale.Subtotal - sale.Discount;
-
-            // 8.2 RECALCULAR CRÉDITO SI EXISTE (TAREA 3.1 y 3.2)
-            if (sale.Credit != null)
-            {
-                var credit = await _unitOfWork.Credits.GetByIdWithDetailsAsync(sale.Credit.Id);
-                if (credit == null)
-                {
-                    // TAREA 3.1: Si credit es null, solo actualizar la venta y salir
-                    _unitOfWork.Sales.Update(sale);
-                    await _unitOfWork.SaveChangesAsync();
-                    return _mapper.Map<ReturnDto>(returnEntity);
-                }
-
-                credit.TotalAmount = sale.Total;
-                credit.PendingAmount = Math.Max(0, credit.TotalAmount - credit.PaidAmount);
-
-                // Actualizar estado del crédito
-                if (credit.PendingAmount == 0)
-                    credit.Status = CreditStatus.Paid;
-                else if (credit.PaidAmount > 0 && credit.PaidAmount < credit.TotalAmount)
-                    credit.Status = CreditStatus.Partial;
-                else if (credit.PaidAmount == 0)
-                    credit.Status = CreditStatus.Pending;
-
-                _unitOfWork.Credits.Update(credit);
-
-                // TAREA 3.2: Redistribuir cuotas pendientes con null checks robustos
-                var unpaidInstallments = credit.Installments?
-                    .Where(i => !i.IsPaid)
-                    .OrderBy(i => i.Number)
-                    .ToList() ?? new List<CreditInstallment>();
-
-                if (unpaidInstallments.Any() && credit.PendingAmount > 0)
-                {
-                    decimal newInstallmentAmount = Math.Round(
-                        credit.PendingAmount / unpaidInstallments.Count, 2);
-
-                    foreach (var installment in unpaidInstallments)
-                    {
-                        if (installment != null)
-                        {
-                            installment.Amount = newInstallmentAmount;
-                        }
-                    }
-                }
-            }
-
-            // 9. ACTUALIZAR ESTADO DE LA VENTA
-            // BUG 5 FIX: No desactivar el Sale en devolución total, solo cambiar Status
+            sale.Total = Math.Max(0, sale.Total - returnEntity.TotalAmount);
+            sale.Subtotal = Math.Max(0, sale.Subtotal - returnEntity.TotalAmount);
+            
             if (sale.Total <= 0)
-            {
                 sale.Status = SaleStatus.FullReturn;
-                // NO desactivar: sale.IsActive = false; - Mantener para historial
-            }
             else
-            {
-                // Verificar si todos los productos fueron devueltos completamente
-                var allReturns = await _unitOfWork.ReturnDetails.FindAsync(rd => 
-                    rd.Return!.SaleId == sale.Id && rd.Return.IsActive);
-                
-                bool allFullyReturned = true;
-                foreach (var saleDetail in sale.SaleDetails.Where(sd => sd.IsActive))
-                {
-                    var totalReturned = allReturns
-                        .Where(rd => rd.ProductId == saleDetail.ProductId)
-                        .Sum(rd => rd.Quantity);
-                    
-                    if (totalReturned < saleDetail.Quantity)
-                    {
-                        allFullyReturned = false;
-                        break;
-                    }
-                }
-
-                if (allFullyReturned && !activeDetails.Any())
-                {
-                    sale.Status = SaleStatus.FullReturn;
-                    // NO desactivar: sale.IsActive = false; - Mantener para historial
-                }
-                else
-                {
-                    sale.Status = SaleStatus.PartialReturn;
-                }
-            }
+                sale.Status = SaleStatus.PartialReturn;
             
             _unitOfWork.Sales.Update(sale);
             await _unitOfWork.SaveChangesAsync();
@@ -284,6 +107,122 @@ namespace NexusAs.Application.Services
                 r.SaleId == saleId && r.IsActive);
 
             return _mapper.Map<IEnumerable<ReturnDto>>(returns.OrderByDescending(r => r.Date));
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // MÉTODOS PRIVADOS DE REFACTORIZACIÓN
+        // ═══════════════════════════════════════════════════════════════════════
+
+        private async Task<Sale> GetAndValidateSaleAsync(int saleId)
+        {
+            var sale = await _unitOfWork.Sales.GetSaleByIdWithDetailsAsync(saleId);
+            if (sale == null)
+                throw new NotFoundException(nameof(Sale), saleId);
+            return sale;
+        }
+
+        private void ValidateReturnDetails(CreateReturnDto dto, Sale sale)
+        {
+            foreach (var detail in dto.Details)
+            {
+                var saleDetail = sale.SaleDetails.FirstOrDefault(sd => sd.ProductId == detail.ProductId);
+                if (saleDetail == null)
+                    throw new BusinessException(
+                        $"El producto {detail.ProductId} no pertenece a esta venta.");
+
+                if (detail.Quantity > saleDetail.Quantity)
+                    throw new BusinessException(
+                        $"La cantidad devuelta ({detail.Quantity}) excede la vendida ({saleDetail.Quantity}).");
+            }
+        }
+
+        private async Task ProcessStockReturnAsync(Return returnEntity, Sale sale, string returnNumber, int userId)
+        {
+            foreach (var returnDetail in returnEntity.ReturnDetails)
+            {
+                var product = await _unitOfWork.Products.GetByIdAsync(returnDetail.ProductId);
+                if (product == null) continue;
+
+                var stockBefore = product.Stock;
+                product.Stock += returnDetail.Quantity;
+                _unitOfWork.Products.Update(product);
+
+                var movement = new StockMovement
+                {
+                    ProductId = returnDetail.ProductId,
+                    Date = DateTime.Now,
+                    Type = MovementType.Entry,
+                    Quantity = returnDetail.Quantity,
+                    StockBefore = stockBefore,
+                    StockAfter = product.Stock,
+                    Reason = $"Devolución {returnNumber}",
+                    SaleId = sale.Id,
+                    UserId = userId
+                };
+                await _unitOfWork.StockMovements.AddAsync(movement);
+            }
+        }
+
+        private void UpdateCreditAfterReturnAsync(Sale sale, decimal returnedAmount)
+        {
+            if (sale.Credit == null) return;
+
+            var credit = sale.Credit;
+            credit.TotalAmount = Math.Max(0, credit.TotalAmount - returnedAmount);
+            credit.PendingAmount = Math.Max(0, credit.TotalAmount - credit.PaidAmount);
+            
+            credit.Status = credit.PendingAmount <= 0 ? CreditStatus.Paid :
+                           credit.PaidAmount > 0 ? CreditStatus.Partial : CreditStatus.Pending;
+
+            var pendingInstallments = credit.Installments?
+                .Where(i => !i.IsPaid)
+                .OrderBy(i => i.Number)
+                .ToList() ?? new List<CreditInstallment>();
+
+            var remaining = returnedAmount;
+            foreach (var inst in pendingInstallments)
+            {
+                if (remaining <= 0) break;
+                
+                if (remaining >= inst.Amount)
+                {
+                    inst.IsPaid = true;
+                    remaining -= inst.Amount;
+                }
+                else
+                {
+                    inst.Amount -= remaining;
+                    remaining = 0;
+                }
+            }
+
+            _unitOfWork.Credits.Update(credit);
+        }
+
+        private async Task UpdatePartnerSaleAfterReturnAsync(Sale sale, List<ReturnDetail> returnDetails)
+        {
+            foreach (var returnDetail in returnDetails)
+            {
+                var partnerSales = await _unitOfWork.PartnerSales.FindAsync(ps =>
+                    ps.SaleId == sale.Id &&
+                    ps.ProductId == returnDetail.ProductId &&
+                    ps.IsActive);
+
+                foreach (var partnerSale in partnerSales)
+                {
+                    if (partnerSale == null || partnerSale.Quantity <= 0) continue;
+
+                    var ratio = returnDetail.Quantity / (decimal)partnerSale.Quantity;
+                    partnerSale.Quantity -= returnDetail.Quantity;
+                    partnerSale.PartnerEarning -= partnerSale.PartnerEarning * ratio;
+                    partnerSale.AsEarning -= partnerSale.AsEarning * ratio;
+
+                    if (partnerSale.Quantity <= 0)
+                        partnerSale.IsActive = false;
+
+                    _unitOfWork.PartnerSales.Update(partnerSale);
+                }
+            }
         }
     }
 }

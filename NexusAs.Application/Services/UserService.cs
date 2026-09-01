@@ -103,5 +103,16 @@ namespace NexusAs.Application.Services
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
         }
+
+        public async Task ResetPasswordAsync(int userId, ResetPasswordDto dto)
+        {
+            var user = await _unitOfWork.Users.GetByIdIncludingInactiveAsync(userId);
+            if (user == null)
+                throw new NotFoundException(nameof(User), userId);
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            _unitOfWork.Users.Update(user);
+            await _unitOfWork.SaveChangesAsync();
+        }
     }
 }

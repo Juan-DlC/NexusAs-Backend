@@ -15,13 +15,16 @@ namespace NexusAs.Api.Controllers
     {
         private readonly IBusinessPartnerService _service;
         private readonly IBusinessPartnerReportService _reportService;
+        private readonly ILogger<BusinessPartnerController> _logger;
 
         public BusinessPartnerController(
             IBusinessPartnerService service,
-            IBusinessPartnerReportService reportService)
+            IBusinessPartnerReportService reportService,
+            ILogger<BusinessPartnerController> logger)
         {
             _service = service;
             _reportService = reportService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -113,6 +116,9 @@ namespace NexusAs.Api.Controllers
                 dto.ToDate, 
                 userId, 
                 dto.Notes);
+            
+            _logger.LogInformation("Liquidación confirmada para socio {BusinessPartnerId} por usuario {UserId}. Monto total: ${TotalAmount:N0}",
+                businessPartnerId, userId, result.TotalAmount);
             
             return Ok(ApiResponse<BusinessPartnerLiquidationDto>.Success(
                 result, 
