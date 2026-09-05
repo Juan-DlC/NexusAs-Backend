@@ -14,6 +14,7 @@ namespace NexusAs.Application.Interfaces
         Task<BusinessPartnerDto?> GetByIdAsync(int id);
         Task<BusinessPartnerDto> CreateAsync(CreateBusinessPartnerDto dto);
         Task<BusinessPartnerDto> UpdateAsync(int id, UpdateBusinessPartnerDto dto);
+        Task<BusinessPartnerDto> UpdateCommissionAsync(int id, UpdateCommissionDto dto);
         Task DeleteAsync(int id);
         Task<BusinessPartnerDto> ToggleStatusAsync(int id);
         

@@ -119,6 +119,14 @@ namespace NexusAs.Application.Services
             if (paymentMethod == null)
                 throw new BusinessException($"El método de pago seleccionado no existe.");
 
+            // VALIDACIÓN CRÍTICA: Si es crédito, DEBE tener cliente (excepto si es venta a socia)
+            if (paymentMethod.Code == "CREDIT")
+            {
+                if (dto.CustomerId == null && dto.PartnerUserId == null)
+                    throw new BusinessException(
+                        "Las ventas a crédito requieren seleccionar un cliente registrado.");
+            }
+
             // TAREA 1: OPTIMIZACIÓN - Cargar PartnerConfig UNA sola vez si es necesario
             PartnerConfig? partnerConfig = null;
             if (dto.PartnerUserId.HasValue || userExists.Role == UserRole.Partner)
@@ -246,11 +254,6 @@ namespace NexusAs.Application.Services
             // Si es crédito, crear registro de crédito
             if (paymentMethod.Code == "CREDIT")
             {
-                // Validar CustomerId solo si NO es venta a socia
-                if (dto.CustomerId == null && dto.PartnerUserId == null)
-                    throw new BusinessException(
-                        "Las ventas a crédito requieren un cliente registrado.");
-
                 // Para ventas a socias, usar 1 cuota por defecto si no se especifica
                 var numberOfInstallments = dto.NumberOfInstallments ?? 1;
                 if (numberOfInstallments < 1)

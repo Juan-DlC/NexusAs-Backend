@@ -54,7 +54,7 @@ namespace NexusAs.Application.Services
         public async Task<ReturnDto> CreateAsync(CreateReturnDto dto, int userId)
         {
             var sale = await GetAndValidateSaleAsync(dto.SaleId);
-            ValidateReturnDetails(dto, sale);
+            await ValidateReturnDetailsAsync(dto, sale);
 
             var returnNumber = $"DEV-{DateTime.Now:yyyyMMddHHmmss}";
             var seller = await _unitOfWork.Users.GetByIdAsync(sale.UserId);
@@ -121,8 +121,12 @@ namespace NexusAs.Application.Services
             return sale;
         }
 
-        private void ValidateReturnDetails(CreateReturnDto dto, Sale sale)
+        private async Task ValidateReturnDetailsAsync(CreateReturnDto dto, Sale sale)
         {
+            // Obtener TODAS las devoluciones previas de esta venta
+            var previousReturns = await _unitOfWork.Returns.FindAsync(r => 
+                r.SaleId == sale.Id && r.IsActive);
+            
             foreach (var detail in dto.Details)
             {
                 var saleDetail = sale.SaleDetails.FirstOrDefault(sd => sd.ProductId == detail.ProductId);
@@ -130,9 +134,24 @@ namespace NexusAs.Application.Services
                     throw new BusinessException(
                         $"El producto {detail.ProductId} no pertenece a esta venta.");
 
-                if (detail.Quantity > saleDetail.Quantity)
+                // Calcular cuánto se ha devuelto previamente de este producto
+                var totalPreviouslyReturned = 0;
+                foreach (var prevReturn in previousReturns)
+                {
+                    var prevReturnDetails = await _unitOfWork.ReturnDetails.FindAsync(rd => 
+                        rd.ReturnId == prevReturn.Id && rd.ProductId == detail.ProductId);
+                    totalPreviouslyReturned += prevReturnDetails.Sum(rd => rd.Quantity);
+                }
+
+                // Calcular cantidad disponible para devolución
+                var availableToReturn = saleDetail.Quantity - totalPreviouslyReturned;
+
+                if (detail.Quantity > availableToReturn)
                     throw new BusinessException(
-                        $"La cantidad devuelta ({detail.Quantity}) excede la vendida ({saleDetail.Quantity}).");
+                        $"La cantidad a devolver ({detail.Quantity}) excede la disponible para devolución. " +
+                        $"Vendido originalmente: {saleDetail.Quantity}, " +
+                        $"Ya devuelto: {totalPreviouslyReturned}, " +
+                        $"Disponible para devolver: {availableToReturn}.");
             }
         }
 

@@ -91,6 +91,23 @@ namespace NexusAs.Application.Services
             return _mapper.Map<BusinessPartnerDto>(businessPartner);
         }
 
+        public async Task<BusinessPartnerDto> UpdateCommissionAsync(int id, UpdateCommissionDto dto)
+        {
+            var businessPartner = await _unitOfWork.BusinessPartners.GetByIdAsync(id);
+            if (businessPartner == null)
+                throw new NotFoundException(nameof(BusinessPartner), id);
+
+            if (dto.CommissionPercent < 0 || dto.CommissionPercent > 100)
+                throw new BusinessException(
+                    "El porcentaje de comisión debe estar entre 0 y 100.");
+
+            businessPartner.CommissionPercent = dto.CommissionPercent;
+            _unitOfWork.BusinessPartners.Update(businessPartner);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<BusinessPartnerDto>(businessPartner);
+        }
+
         public async Task DeleteAsync(int id)
         {
             var businessPartner = await _unitOfWork.BusinessPartners.GetByIdAsync(id);

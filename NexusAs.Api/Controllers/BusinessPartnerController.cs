@@ -87,6 +87,16 @@ namespace NexusAs.Api.Controllers
         }
 
         [Authorize(Roles = "Admin")]
+        [HttpPatch("{id}/commission")]
+        public async Task<ActionResult<ApiResponse<BusinessPartnerDto>>> UpdateCommission(
+            int id,
+            [FromBody] UpdateCommissionDto dto)
+        {
+            var result = await _service.UpdateCommissionAsync(id, dto);
+            return Ok(ApiResponse<BusinessPartnerDto>.Success(result, "Comisión actualizada exitosamente"));
+        }
+
+        [Authorize(Roles = "Admin")]
         [HttpGet("{businessPartnerId}/liquidation/preview")]
         public async Task<ActionResult<ApiResponse<BusinessPartnerLiquidationPreviewDto>>> PreviewLiquidation(
             int businessPartnerId,
