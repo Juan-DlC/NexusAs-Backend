@@ -26,5 +26,6 @@ namespace NexusAs.Application.Interfaces
         IBusinessPartnerRepository BusinessPartners { get; }
         IRepository<BusinessPartnerLiquidation> BusinessPartnerLiquidations { get; }
         IRepository<BusinessPartnerLiquidationDetail> BusinessPartnerLiquidationDetails { get; }
+        IRepository<PartnerBusinessCommission> PartnerBusinessCommissions { get; }
     }
 }

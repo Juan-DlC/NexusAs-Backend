@@ -166,6 +166,13 @@ namespace NexusAs.Application.Mappings
             
             CreateMap<CreateBusinessPartnerDto, BusinessPartner>();
             CreateMap<UpdateBusinessPartnerDto, BusinessPartner>();
+
+            // PartnerBusinessCommission mappings
+            CreateMap<PartnerBusinessCommission, PartnerBusinessCommissionDto>()
+                .ForMember(dest => dest.BusinessPartnerName,
+                    opt => opt.MapFrom(src => src.BusinessPartner != null 
+                        ? src.BusinessPartner.Name 
+                        : string.Empty));
         }
     }
 }

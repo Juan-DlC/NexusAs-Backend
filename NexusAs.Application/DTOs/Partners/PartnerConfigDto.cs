@@ -10,5 +10,6 @@
         public decimal AllianceCommissionPercent { get; set; }
         public bool IsActive { get; set; }
         public string? Notes { get; set; }
+        public List<PartnerBusinessCommissionDto> BusinessCommissions { get; set; } = new();
     }
 }

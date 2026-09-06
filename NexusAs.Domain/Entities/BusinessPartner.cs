@@ -12,5 +12,6 @@ namespace NexusAs.Domain.Entities
         // Navigation properties
         public ICollection<Product> Products { get; set; } = new List<Product>();
         public ICollection<BusinessPartnerLiquidation> Liquidations { get; set; } = new List<BusinessPartnerLiquidation>();
+        public ICollection<PartnerBusinessCommission> PartnerCommissions { get; set; } = new List<PartnerBusinessCommission>();
     }
 }

@@ -32,6 +32,7 @@ namespace NexusAs.Infrastructure.Data
         public DbSet<BusinessPartner> BusinessPartners { get; set; }
         public DbSet<BusinessPartnerLiquidation> BusinessPartnerLiquidations { get; set; }
         public DbSet<BusinessPartnerLiquidationDetail> BusinessPartnerLiquidationDetails { get; set; }
+        public DbSet<PartnerBusinessCommission> PartnerBusinessCommissions { get; set; }
 
         public override async Task<int> SaveChangesAsync(
             CancellationToken cancellationToken = default)
@@ -57,6 +58,9 @@ namespace NexusAs.Infrastructure.Data
             base.OnModelCreating(modelBuilder);
             modelBuilder.ApplyConfigurationsFromAssembly(
                 System.Reflection.Assembly.GetExecutingAssembly());
+
+            // Aplicar configuración de PartnerBusinessCommission
+            modelBuilder.ApplyConfiguration(new Configuration.PartnerBusinessCommissionConfiguration());
 
             // TAREA 5: ÍNDICES DE PERFORMANCE
             // Índices para Sales

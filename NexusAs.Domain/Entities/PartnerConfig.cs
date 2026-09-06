@@ -13,5 +13,7 @@
             = new List<PartnerSale>();
         public ICollection<PartnerLiquidation> Liquidations { get; set; }
             = new List<PartnerLiquidation>();
+        public ICollection<PartnerBusinessCommission> BusinessCommissions { get; set; }
+            = new List<PartnerBusinessCommission>();
     }
 }

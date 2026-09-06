@@ -44,6 +44,23 @@ namespace NexusAs.Application.Services
             foreach (var config in configs)
             {
                 var user = await _unitOfWork.Users.GetByIdAsync(config.UserId);
+                
+                // Cargar comisiones específicas de BusinessPartners
+                var businessCommissions = await _unitOfWork.PartnerBusinessCommissions
+                    .FindAsync(pbc => pbc.PartnerConfigId == config.Id && pbc.IsActive);
+                
+                var businessCommissionDtos = new List<PartnerBusinessCommissionDto>();
+                foreach (var bc in businessCommissions)
+                {
+                    var businessPartner = await _unitOfWork.BusinessPartners.GetByIdAsync(bc.BusinessPartnerId);
+                    businessCommissionDtos.Add(new PartnerBusinessCommissionDto
+                    {
+                        BusinessPartnerId = bc.BusinessPartnerId,
+                        BusinessPartnerName = businessPartner?.Name ?? "",
+                        CommissionPercent = bc.CommissionPercent
+                    });
+                }
+
                 result.Add(new PartnerConfigDto
                 {
                     Id = config.Id,
@@ -51,8 +68,10 @@ namespace NexusAs.Application.Services
                     PartnerName = user?.FullName ?? "",
                     Username = user?.Username ?? "",
                     CommissionPercent = config.CommissionPercent,
+                    AllianceCommissionPercent = config.AllianceCommissionPercent,
                     IsActive = config.IsActive,
-                    Notes = config.Notes
+                    Notes = config.Notes,
+                    BusinessCommissions = businessCommissionDtos
                 });
             }
 
@@ -66,6 +85,23 @@ namespace NexusAs.Application.Services
                 throw new NotFoundException("PartnerConfig", partnerConfigId);
 
             var user = await _unitOfWork.Users.GetByIdAsync(config.UserId);
+            
+            // Cargar comisiones específicas de BusinessPartners
+            var businessCommissions = await _unitOfWork.PartnerBusinessCommissions
+                .FindAsync(pbc => pbc.PartnerConfigId == config.Id && pbc.IsActive);
+            
+            var businessCommissionDtos = new List<PartnerBusinessCommissionDto>();
+            foreach (var bc in businessCommissions)
+            {
+                var businessPartner = await _unitOfWork.BusinessPartners.GetByIdAsync(bc.BusinessPartnerId);
+                businessCommissionDtos.Add(new PartnerBusinessCommissionDto
+                {
+                    BusinessPartnerId = bc.BusinessPartnerId,
+                    BusinessPartnerName = businessPartner?.Name ?? "",
+                    CommissionPercent = bc.CommissionPercent
+                });
+            }
+
             return new PartnerConfigDto
             {
                 Id = config.Id,
@@ -75,7 +111,8 @@ namespace NexusAs.Application.Services
                 CommissionPercent = config.CommissionPercent,
                 AllianceCommissionPercent = config.AllianceCommissionPercent,
                 IsActive = config.IsActive,
-                Notes = config.Notes
+                Notes = config.Notes,
+                BusinessCommissions = businessCommissionDtos
             };
         }
 
@@ -132,9 +169,42 @@ namespace NexusAs.Application.Services
                 throw new BusinessException(
                     "El porcentaje de comisión de alianza debe estar entre 0 y 100.");
 
+            // Actualizar comisiones generales (fallback)
             config.CommissionPercent = dto.CommissionPercent;
             config.AllianceCommissionPercent = dto.AllianceCommissionPercent;
             _unitOfWork.PartnerConfigs.Update(config);
+
+            // Procesar comisiones individuales por BusinessPartner
+            foreach (var bc in dto.BusinessCommissions)
+            {
+                if (bc.CommissionPercent < 0 || bc.CommissionPercent > 100)
+                    throw new BusinessException(
+                        $"El porcentaje de comisión para el socio comercial {bc.BusinessPartnerId} debe estar entre 0 y 100.");
+
+                var existingCommissions = await _unitOfWork.PartnerBusinessCommissions
+                    .FindAsync(c => c.PartnerConfigId == partnerConfigId && 
+                                   c.BusinessPartnerId == bc.BusinessPartnerId);
+                var existing = existingCommissions.FirstOrDefault();
+
+                if (existing != null)
+                {
+                    // Actualizar comisión existente
+                    existing.CommissionPercent = bc.CommissionPercent;
+                    _unitOfWork.PartnerBusinessCommissions.Update(existing);
+                }
+                else
+                {
+                    // Crear nueva comisión específica
+                    var newCommission = new PartnerBusinessCommission
+                    {
+                        PartnerConfigId = partnerConfigId,
+                        BusinessPartnerId = bc.BusinessPartnerId,
+                        CommissionPercent = bc.CommissionPercent
+                    };
+                    await _unitOfWork.PartnerBusinessCommissions.AddAsync(newCommission);
+                }
+            }
+
             await _unitOfWork.SaveChangesAsync();
 
             return await GetPartnerByIdAsync(partnerConfigId) ?? throw new Exception();
@@ -435,18 +505,39 @@ namespace NexusAs.Application.Services
             if (partnerConfig == null)
                 throw new NotFoundException("PartnerConfig", partnerConfigId);
 
+            // Cargar comisiones específicas de BusinessPartners para esta socia
+            var businessCommissions = await _unitOfWork.PartnerBusinessCommissions
+                .FindAsync(pbc => pbc.PartnerConfigId == partnerConfigId && pbc.IsActive);
+            var businessCommissionsDict = businessCommissions
+                .ToDictionary(bc => bc.BusinessPartnerId, bc => bc.CommissionPercent);
+
             // Usar repositorio con Include de Category y Supplier
             var products = await _productRepository.GetProductsWithCategoryAsync();
 
             var result = new List<PartnerProductViewDto>();
             foreach (var product in products.Where(p => p.IsActive && p.Stock > 0).OrderBy(p => p.Name))
             {
-                // TAREA 2: Determinar porcentaje según tipo de producto
-                var commissionPercent = product.IsPartnership
-                    ? partnerConfig.AllianceCommissionPercent
-                    : partnerConfig.CommissionPercent;
+                // Determinar porcentaje según tipo de producto
+                decimal commissionPercent;
+                if (product.IsPartnership && product.BusinessPartnerId.HasValue)
+                {
+                    // Buscar comisión específica para este BusinessPartner
+                    if (businessCommissionsDict.TryGetValue(product.BusinessPartnerId.Value, out var specificPercent))
+                    {
+                        commissionPercent = specificPercent;
+                    }
+                    else
+                    {
+                        // Fallback al porcentaje general de alianza
+                        commissionPercent = partnerConfig.AllianceCommissionPercent;
+                    }
+                }
+                else
+                {
+                    commissionPercent = partnerConfig.CommissionPercent;
+                }
 
-                // TAREA 2: Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent / 100)
+                // Fórmula correcta partnerPrice = SalePrice - (gainAS × commissionPercent / 100)
                 var gainAS = product.SalePrice - product.Cost;
                 var partnerPrice = product.SalePrice - (gainAS * commissionPercent / 100);
 
