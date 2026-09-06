@@ -408,52 +408,50 @@ namespace NexusAs.Application.Services
             await _unitOfWork.PartnerLiquidations.AddAsync(liquidation);
             await _unitOfWork.SaveChangesAsync();
 
-            // Si el abono tiene SaleId, actualizar el crédito asociado
-            if (dto.SaleId.HasValue && type == LiquidationType.Payment)
+            // Si es un abono (Payment), actualizar los créditos correspondientes
+            if (type == LiquidationType.Payment)
             {
-                var credits = await _unitOfWork.Credits.FindAsync(c => 
-                    c.SaleId == dto.SaleId.Value && c.IsActive);
-                var credit = credits.FirstOrDefault();
-                
-                if (credit != null)
+                if (dto.SaleId.HasValue)
                 {
-                    credit.PaidAmount += dto.Amount;
-                    credit.PendingAmount = credit.TotalAmount - credit.PaidAmount;
+                    // Abono a una factura específica
+                    var credits = await _unitOfWork.Credits.FindAsync(c => 
+                        c.SaleId == dto.SaleId.Value && c.IsActive);
+                    var credit = credits.FirstOrDefault();
                     
-                    // Actualizar estado del crédito
-                    if (credit.PendingAmount <= 0)
-                        credit.Status = CreditStatus.Paid;
-                    else if (credit.PaidAmount > 0 && credit.PaidAmount < credit.TotalAmount)
-                        credit.Status = CreditStatus.Partial;
-                    else
-                        credit.Status = CreditStatus.Pending;
-                    
-                    _unitOfWork.Credits.Update(credit);
-                    
-                    // Distribuir el abono en las cuotas pendientes
-                    var pendingInstallments = await _unitOfWork.CreditInstallments.FindAsync(i => 
-                        i.CreditId == credit.Id && !i.IsPaid);
-                    var installmentsList = pendingInstallments.OrderBy(i => i.Number).ToList();
-                    
-                    var remaining = dto.Amount;
-                    foreach (var inst in installmentsList)
+                    if (credit != null)
                     {
-                        if (remaining <= 0) break;
-                        
-                        if (remaining >= inst.Amount)
-                        {
-                            inst.IsPaid = true;
-                            remaining -= inst.Amount;
-                        }
-                        else
-                        {
-                            inst.Amount -= remaining;
-                            remaining = 0;
-                        }
-                        _unitOfWork.CreditInstallments.Update(inst);
+                        await ApplyCreditPaymentAsync(credit, dto.Amount);
+                    }
+                }
+                else
+                {
+                    // Abono general: distribuir entre todos los créditos pendientes de la socia
+                    var salesWithCredit = await _unitOfWork.Sales.FindAsync(s => 
+                        s.UserId == config.UserId && s.IsActive);
+                    
+                    var pendingCredits = new List<Credit>();
+                    foreach (var sale in salesWithCredit)
+                    {
+                        var credits = await _unitOfWork.Credits.FindAsync(c => 
+                            c.SaleId == sale.Id && c.IsActive && c.PendingAmount > 0);
+                        pendingCredits.AddRange(credits);
                     }
                     
-                    await _unitOfWork.SaveChangesAsync();
+                    // Ordenar por fecha (más antiguas primero - FIFO)
+                    var sortedCredits = pendingCredits
+                        .OrderBy(c => c.CreatedAt)
+                        .ToList();
+                    
+                    // Distribuir el abono general entre los créditos pendientes
+                    var remainingAmount = dto.Amount;
+                    foreach (var credit in sortedCredits)
+                    {
+                        if (remainingAmount <= 0) break;
+                        
+                        var amountToApply = Math.Min(remainingAmount, credit.PendingAmount);
+                        await ApplyCreditPaymentAsync(credit, amountToApply);
+                        remainingAmount -= amountToApply;
+                    }
                 }
             }
 
@@ -710,6 +708,48 @@ namespace NexusAs.Application.Services
             }
 
             return (totalDebt, totalPaid);
+        }
+
+        // Método auxiliar para aplicar un pago a un crédito específico
+        private async Task ApplyCreditPaymentAsync(Credit credit, decimal amount)
+        {
+            credit.PaidAmount += amount;
+            credit.PendingAmount = credit.TotalAmount - credit.PaidAmount;
+            
+            // Actualizar estado del crédito
+            if (credit.PendingAmount <= 0)
+                credit.Status = CreditStatus.Paid;
+            else if (credit.PaidAmount > 0 && credit.PaidAmount < credit.TotalAmount)
+                credit.Status = CreditStatus.Partial;
+            else
+                credit.Status = CreditStatus.Pending;
+            
+            _unitOfWork.Credits.Update(credit);
+            
+            // Distribuir el abono en las cuotas pendientes
+            var pendingInstallments = await _unitOfWork.CreditInstallments.FindAsync(i => 
+                i.CreditId == credit.Id && !i.IsPaid);
+            var installmentsList = pendingInstallments.OrderBy(i => i.Number).ToList();
+            
+            var remaining = amount;
+            foreach (var inst in installmentsList)
+            {
+                if (remaining <= 0) break;
+                
+                if (remaining >= inst.Amount)
+                {
+                    inst.IsPaid = true;
+                    remaining -= inst.Amount;
+                }
+                else
+                {
+                    inst.Amount -= remaining;
+                    remaining = 0;
+                }
+                _unitOfWork.CreditInstallments.Update(inst);
+            }
+            
+            await _unitOfWork.SaveChangesAsync();
         }
 
         public async Task<PagedResponseDto<PartnerInvoiceDto>> GetPartnerInvoicesAsync(
