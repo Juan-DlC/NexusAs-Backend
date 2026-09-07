@@ -34,7 +34,7 @@ namespace NexusAs.Infrastructure.Data.Configurations
                     Code = "CASH",
                     Description = "Pago en efectivo",
                     IsActive = true,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = new DateTime(2026, 7, 21, 0, 0, 0, DateTimeKind.Utc)
                 },
                 new PaymentMethodEntity
                 {
@@ -43,7 +43,7 @@ namespace NexusAs.Infrastructure.Data.Configurations
                     Code = "CREDIT",
                     Description = "Pago a crédito",
                     IsActive = true,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = new DateTime(2026, 7, 21, 0, 0, 0, DateTimeKind.Utc)
                 },
                 new PaymentMethodEntity
                 {
@@ -52,7 +52,7 @@ namespace NexusAs.Infrastructure.Data.Configurations
                     Code = "ADDI",
                     Description = "Pago mediante plataforma Addi",
                     IsActive = true,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = new DateTime(2026, 7, 21, 0, 0, 0, DateTimeKind.Utc)
                 },
                 new PaymentMethodEntity
                 {
@@ -61,7 +61,7 @@ namespace NexusAs.Infrastructure.Data.Configurations
                     Code = "SISTECREDITO",
                     Description = "Pago mediante Sistecredito",
                     IsActive = true,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = new DateTime(2026, 7, 21, 0, 0, 0, DateTimeKind.Utc)
                 },
                 new PaymentMethodEntity
                 {
@@ -70,7 +70,7 @@ namespace NexusAs.Infrastructure.Data.Configurations
                     Code = "CARD",
                     Description = "Pago con tarjeta de crédito o débito",
                     IsActive = true,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = new DateTime(2026, 7, 21, 0, 0, 0, DateTimeKind.Utc)
                 }
             );
         }
