@@ -80,54 +80,53 @@ namespace NexusAs.Infrastructure.Services
                     {
                         col.Item().Row(row =>
                         {
+                            // Logo alineado verticalmente
                             if (logoBytes != null)
-                                row.ConstantItem(70).Image(logoBytes).FitArea();
-                            row.RelativeItem().Column(titleCol =>
+                                row.ConstantItem(100).AlignMiddle().Image(logoBytes).FitArea();
+                            
+                            row.RelativeItem().PaddingLeft(12).AlignMiddle().Column(titleCol =>
                             {
-                                titleCol.Item().PaddingLeft(8)
-                                    .Text("AS Accesorios")
-                                    .FontSize(20).Bold().FontColor(_reportStyle.ColorPrincipal);
-                                titleCol.Item().PaddingLeft(8)
-                                    .Text("Estado de Cuenta — Socia")
-                                    .FontSize(13).Bold().FontColor(_reportStyle.ColorAcento);
-                                titleCol.Item().PaddingLeft(8)
+                                titleCol.Item()
+                                    .Text("ESTADO DE CUENTA — SOCIA")
+                                    .FontSize(11).Bold().FontColor(_reportStyle.ColorTextoSecundario);
+                                titleCol.Item().PaddingTop(3)
                                     .Text($"Socia: {config.User?.FullName ?? ""}")
-                                    .FontSize(11).FontColor(_reportStyle.ColorPrincipal);
-                                titleCol.Item().PaddingLeft(8)
+                                    .FontSize(12).Bold().FontColor(_reportStyle.ColorPrincipal);
+                                titleCol.Item().PaddingTop(1)
                                     .Text($"Período: {from:dd/MM/yyyy} — {to:dd/MM/yyyy}")
-                                    .FontSize(10);
+                                    .FontSize(9).FontColor(_reportStyle.ColorTextoSecundario);
                             });
                         });
-                        col.Item().PaddingTop(6).LineHorizontal(2).LineColor(_reportStyle.ColorAcento);
+                        col.Item().PaddingTop(6).LineHorizontal(1).LineColor(_reportStyle.ColorAcento);
                     });
 
-                    page.Content().PaddingTop(10).Column(col =>
+                    page.Content().PaddingTop(8).Column(col =>
                     {
-                        // BUG 4 FIX: Resumen solo con deuda de créditos
-                        col.Item().Background(_reportStyle.ColorFondoSuave).Padding(8).Column(res =>
+                        // Resumen solo con deuda de créditos
+                        col.Item().Background(_reportStyle.ColorFilasAlternas).Padding(6).Column(res =>
                         {
-                            res.Item().Text("Resumen de Deuda").FontSize(13).Bold().FontColor(_reportStyle.ColorAcento);
-                            res.Item().PaddingTop(4).Table(table =>
+                            res.Item().Text("Resumen de Deuda").FontSize(11).Bold().FontColor(_reportStyle.ColorPrincipal);
+                            res.Item().PaddingTop(3).Table(table =>
                             {
                                 table.ColumnsDefinition(c =>
                                 {
                                     c.RelativeColumn();
                                     c.RelativeColumn();
                                 });
-                                table.Cell().Text("Total deuda (créditos):").Bold();
-                                table.Cell().AlignRight().Text($"${totalDebt:N0}");
-                                table.Cell().Text("Total abonado:").Bold().FontColor(_reportStyle.ColorExito);
+                                table.Cell().Text("Total deuda (créditos):").Bold().FontSize(9);
+                                table.Cell().AlignRight().Text($"${totalDebt:N0}").FontSize(9);
+                                table.Cell().Text("Total abonado:").Bold().FontSize(9).FontColor(_reportStyle.ColorExito);
                                 table.Cell().AlignRight()
-                                    .Text($"${totalPaid:N0}").FontColor(_reportStyle.ColorExito);
-                                table.Cell().Text("Saldo pendiente:").Bold().FontColor(_reportStyle.ColorAlerta);
+                                    .Text($"${totalPaid:N0}").FontSize(9).FontColor(_reportStyle.ColorExito);
+                                table.Cell().Text("Saldo pendiente:").Bold().FontSize(10).FontColor(_reportStyle.ColorAlerta);
                                 table.Cell().AlignRight()
-                                    .Text($"${pendingDebt:N0}").Bold().FontColor(_reportStyle.ColorAlerta);
+                                    .Text($"${pendingDebt:N0}").Bold().FontSize(10).FontColor(_reportStyle.ColorAlerta);
                             });
                         });
 
-                        // BUG 4 FIX: Facturas con saldo pendiente - tabla mejorada
-                        col.Item().PaddingTop(12)
-                            .Text("Facturas con Saldo Pendiente").FontSize(12).Bold();
+                        // Facturas con saldo pendiente - tabla mejorada
+                        col.Item().PaddingTop(8)
+                            .Text("Facturas con Saldo Pendiente").FontSize(11).Bold();
                         
                         if (salesWithDebt.Any())
                         {
