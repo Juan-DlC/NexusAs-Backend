@@ -48,9 +48,6 @@ namespace NexusAs.Infrastructure.Services
                                 titleCol.Item().PaddingLeft(8)
                                     .Text("AS Accesorios")
                                     .FontSize(20).Bold().FontColor(_reportStyle.ColorPrincipal);
-                                titleCol.Item().PaddingLeft(8)
-                                    .Text("Tenis • Cuidado de Piel • y más")
-                                    .FontSize(9).FontColor(_reportStyle.ColorAcento).Italic();
                                 titleCol.Item().PaddingLeft(8).PaddingTop(2)
                                     .Text("Catálogo de Productos")
                                     .FontSize(13).Bold().FontColor(_reportStyle.ColorAcento);
