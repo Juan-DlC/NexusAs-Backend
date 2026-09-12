@@ -45,7 +45,7 @@ namespace NexusAs.Infrastructure.Services
 
                             row.RelativeItem().Column(titleCol =>
                             {
-                                titleCol.Item().PaddingLeft(8)
+                                titleCol.Item().PaddingLeft(6)
                                     .Text("AS Accesorios")
                                     .FontSize(20).Bold().FontColor(_reportStyle.ColorPrincipal);
                                 titleCol.Item().PaddingLeft(8).PaddingTop(2)
