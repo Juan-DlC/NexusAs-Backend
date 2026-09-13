@@ -25,7 +25,7 @@ namespace NexusAs.Infrastructure.Repositories
             {
                 query = query.Where(bp =>
                     bp.Name.Contains(search) ||
-                    bp.DocumentNumber.Contains(search));
+                    bp.NameNatural.Contains(search));
             }
 
             if (isActiveFilter.HasValue)

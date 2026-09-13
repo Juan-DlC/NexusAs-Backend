@@ -11,9 +11,9 @@ namespace NexusAs.Application.Validators
                 .NotEmpty().WithMessage("El nombre es obligatorio.")
                 .MaximumLength(200).WithMessage("El nombre no puede superar 200 caracteres.");
 
-            RuleFor(x => x.DocumentNumber)
-                .NotEmpty().WithMessage("El número de documento es obligatorio.")
-                .MaximumLength(50).WithMessage("El documento no puede superar 50 caracteres.");
+            RuleFor(x => x.NameNatural)
+                .NotEmpty().WithMessage("El nombre natural es obligatorio.")
+                .MaximumLength(100).WithMessage("El nombre natural no puede superar 100 caracteres.");
 
             RuleFor(x => x.Email)
                 .EmailAddress().WithMessage("El email no tiene un formato válido.")
@@ -38,9 +38,9 @@ namespace NexusAs.Application.Validators
                 .NotEmpty().WithMessage("El nombre es obligatorio.")
                 .MaximumLength(200).WithMessage("El nombre no puede superar 200 caracteres.");
 
-            RuleFor(x => x.DocumentNumber)
-                .NotEmpty().WithMessage("El número de documento es obligatorio.")
-                .MaximumLength(50).WithMessage("El documento no puede superar 50 caracteres.");
+            RuleFor(x => x.NameNatural)
+                .NotEmpty().WithMessage("El nombre natural es obligatorio.")
+                .MaximumLength(100).WithMessage("El nombre natural no puede superar 100 caracteres.");
 
             RuleFor(x => x.Email)
                 .EmailAddress().WithMessage("El email no tiene un formato válido.")

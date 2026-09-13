@@ -16,9 +16,9 @@ namespace NexusAs.Infrastructure.Data.Configuration
                 .IsRequired()
                 .HasMaxLength(100);
 
-            builder.Property(bp => bp.DocumentNumber)
+            builder.Property(bp => bp.NameNatural)
                 .IsRequired()
-                .HasMaxLength(20);
+                .HasMaxLength(100);
 
             builder.Property(bp => bp.Email)
                 .HasMaxLength(100);
@@ -36,9 +36,9 @@ namespace NexusAs.Infrastructure.Data.Configuration
                 .IsRequired()
                 .HasDefaultValue(true);
 
-            // Índice único para DocumentNumber activos
-            builder.HasIndex(bp => new { bp.DocumentNumber, bp.IsActive })
-                .HasDatabaseName("IX_BusinessPartners_DocumentNumber_IsActive");
+            // Índice único para NameNatural activos
+            builder.HasIndex(bp => new { bp.NameNatural, bp.IsActive })
+                .HasDatabaseName("IX_BusinessPartners_NameNatural_IsActive");
 
             // Relación uno a muchos con Products
             builder.HasMany(bp => bp.Products)

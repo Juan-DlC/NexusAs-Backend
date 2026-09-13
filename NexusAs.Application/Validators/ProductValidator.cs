@@ -54,6 +54,9 @@ namespace NexusAs.Application.Validators
                 .GreaterThanOrEqualTo(x => x.Cost)
                 .WithMessage("El precio de venta debe ser mayor o igual al costo.");
 
+            RuleFor(x => x.Stock)
+                .GreaterThanOrEqualTo(0).WithMessage("El stock no puede ser negativo.");
+
             RuleFor(x => x.MinStock)
                 .GreaterThanOrEqualTo(0).WithMessage("El stock mínimo no puede ser negativo.");
 

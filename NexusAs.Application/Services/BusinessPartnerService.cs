@@ -49,11 +49,11 @@ namespace NexusAs.Application.Services
         public async Task<BusinessPartnerDto> CreateAsync(CreateBusinessPartnerDto dto)
         {
             var exists = await _unitOfWork.BusinessPartners
-                .ExistsAsync(bp => bp.DocumentNumber == dto.DocumentNumber && bp.IsActive);
+                .ExistsAsync(bp => bp.NameNatural == dto.NameNatural && bp.IsActive);
             
             if (exists)
                 throw new BusinessException(
-                    $"Ya existe un socio comercial con el documento '{dto.DocumentNumber}'.");
+                    $"Ya existe un socio comercial con el nombre natural '{dto.NameNatural}'.");
 
             if (dto.CommissionPercent < 0 || dto.CommissionPercent > 100)
                 throw new BusinessException(
@@ -73,12 +73,12 @@ namespace NexusAs.Application.Services
                 throw new NotFoundException(nameof(BusinessPartner), id);
 
             var exists = await _unitOfWork.BusinessPartners
-                .ExistsAsync(bp => bp.DocumentNumber == dto.DocumentNumber && 
+                .ExistsAsync(bp => bp.NameNatural == dto.NameNatural && 
                     bp.Id != id && bp.IsActive);
             
             if (exists)
                 throw new BusinessException(
-                    $"Ya existe un socio comercial con el documento '{dto.DocumentNumber}'.");
+                    $"Ya existe un socio comercial con el nombre natural '{dto.NameNatural}'.");
 
             if (dto.CommissionPercent < 0 || dto.CommissionPercent > 100)
                 throw new BusinessException(

@@ -14,6 +14,7 @@ namespace NexusAs.Application.DTOs.Products
         public string? Brand { get; set; }
         public decimal Cost { get; set; }
         public decimal SalePrice { get; set; }
+        public int Stock { get; set; }
         public int MinStock { get; set; }
         public string? ImagePath { get; set; }
         public int CategoryId { get; set; }
