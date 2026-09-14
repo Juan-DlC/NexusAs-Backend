@@ -146,9 +146,26 @@ namespace NexusAs.Application.Services
                         if (products.TryGetValue(detailDto.ProductId, out var product))
                         {
                             var gainAS = product.SalePrice - product.Cost;
-                            var commissionPercent = product.IsPartnership
-                                ? partnerConfig.AllianceCommissionPercent
-                                : partnerConfig.CommissionPercent;
+                            
+                            // Determinar porcentaje según tipo de producto
+                            decimal commissionPercent;
+                            if (product.IsPartnership && product.BusinessPartnerId.HasValue)
+                            {
+                                // Buscar comisión específica para este BusinessPartner
+                                var specificCommissions = await _unitOfWork.PartnerBusinessCommissions
+                                    .FindAsync(pbc => pbc.PartnerConfigId == partnerConfig.Id &&
+                                                     pbc.BusinessPartnerId == product.BusinessPartnerId.Value &&
+                                                     pbc.IsActive);
+                                var specificCommission = specificCommissions.FirstOrDefault();
+                                
+                                // Usar comisión específica o fallback al general
+                                commissionPercent = specificCommission?.CommissionPercent
+                                    ?? partnerConfig.AllianceCommissionPercent;
+                            }
+                            else
+                            {
+                                commissionPercent = partnerConfig.CommissionPercent;
+                            }
                             
                             // Precio para socia = PrecioVenta - (Ganancia × Comisión / 100)
                             detailDto.UnitPrice = product.SalePrice - (gainAS * commissionPercent / 100);

@@ -180,39 +180,20 @@ namespace NexusAs.Application.Services
 
             foreach (var saleDetail in sales)
             {
-                // FÓRMULA CORRECTA:
-                // 1. GananciaBruta = SalePrice - Cost
-                var grossProfit = (saleDetail.Product!.SalePrice - saleDetail.Product.Cost) * saleDetail.Quantity;
+                // LÓGICA CORRECTA:
+                // UnitPrice ya contiene PartnerPrice si fue vendido por socia,
+                // o SalePrice si fue vendido por Admin/Seller
+                var saleRevenue = saleDetail.UnitPrice * saleDetail.Quantity;
+                var saleCost = saleDetail.Product!.Cost * saleDetail.Quantity;
+                var grossProfit = saleRevenue - saleCost;
 
-                // 2. Determinar comisión para socias vendedoras
-                var partnerCommissionPercent = 0m;
-                var partnerCommissionAmount = 0m;
+                // NO restar comisión de socia porque ya está reflejada en UnitPrice
+                var netProfit = grossProfit;
 
-                // Si la venta fue hecha por una socia (Partner role)
-                if (saleDetail.Sale!.User?.Role == Domain.Enums.UserRole.Partner)
-                {
-                    var partnerConfigs = await _unitOfWork.PartnerConfigs
-                        .FindAsync(pc => pc.UserId == saleDetail.Sale.UserId && pc.IsActive);
-                    var partnerConfig = partnerConfigs.FirstOrDefault();
-
-                    if (partnerConfig != null)
-                    {
-                        // Para productos en alianza, usar AllianceCommissionPercent
-                        // IMPORTANTE: NO usar BusinessPartner.CommissionPercent aquí
-                        partnerCommissionPercent = partnerConfig.AllianceCommissionPercent;
-                        partnerCommissionAmount = grossProfit * partnerCommissionPercent / 100;
-                    }
-                }
-
-                // 3. GananciaRestante = GananciaBruta - GananciaParaSocias
-                var remainingProfit = grossProfit - partnerCommissionAmount;
-
-                // 4. LeCorrespondeAlSocioComercial = GananciaRestante × BusinessPartner.CommissionPercent/100
+                // División entre AS y Socio Comercial
                 var businessPartnerCommissionPercent = businessPartner.CommissionPercent;
-                var businessPartnerAmount = remainingProfit * businessPartnerCommissionPercent / 100;
-
-                // 5. LeCorrespondeAS = GananciaRestante - LeCorrespondeAlSocioComercial
-                var asAmount = remainingProfit - businessPartnerAmount;
+                var businessPartnerAmount = Math.Round(netProfit * businessPartnerCommissionPercent / 100, 0);
+                var asAmount = netProfit - businessPartnerAmount;
 
                 details.Add(new LiquidationSaleDetailDto
                 {
@@ -228,9 +209,9 @@ namespace NexusAs.Application.Services
                     CostPrice = saleDetail.Product.Cost,
                     SalePrice = saleDetail.Product.SalePrice,
                     GrossProfit = Math.Round(grossProfit, 2),
-                    PartnerCommissionPercent = partnerCommissionPercent,
-                    PartnerCommissionAmount = Math.Round(partnerCommissionAmount, 2),
-                    RemainingProfit = Math.Round(remainingProfit, 2),
+                    PartnerCommissionPercent = 0,
+                    PartnerCommissionAmount = 0,
+                    RemainingProfit = Math.Round(netProfit, 2),
                     BusinessPartnerCommissionPercent = businessPartnerCommissionPercent,
                     BusinessPartnerAmount = Math.Round(businessPartnerAmount, 2),
                     AsAmount = Math.Round(asAmount, 2)
