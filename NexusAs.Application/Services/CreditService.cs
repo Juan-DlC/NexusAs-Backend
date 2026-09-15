@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using NexusAs.Application.DTOs.Common;
 using NexusAs.Application.DTOs.Credits;
+using NexusAs.Application.Helpers;
 using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Enums;
 using NexusAs.Domain.Exceptions;
@@ -139,7 +140,7 @@ namespace NexusAs.Application.Services
             {
                 CreditId = credit.Id,
                 Amount = dto.Amount,
-                Date = DateTime.Now,
+                Date = DateTimeHelper.Now,
                 Notes = dto.Notes,
                 UserId = userId
             };

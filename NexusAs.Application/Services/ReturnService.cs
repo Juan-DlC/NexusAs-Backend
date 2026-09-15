@@ -1,6 +1,7 @@
 using AutoMapper;
 using NexusAs.Application.DTOs.Common;
 using NexusAs.Application.DTOs.Returns;
+using NexusAs.Application.Helpers;
 using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Entities;
 using NexusAs.Domain.Enums;
@@ -56,7 +57,7 @@ namespace NexusAs.Application.Services
             var sale = await GetAndValidateSaleAsync(dto.SaleId);
             await ValidateReturnDetailsAsync(dto, sale);
 
-            var returnNumber = $"DEV-{DateTime.Now:yyyyMMddHHmmss}";
+            var returnNumber = $"DEV-{DateTimeHelper.Now:yyyyMMddHHmmss}";
             var seller = await _unitOfWork.Users.GetByIdAsync(sale.UserId);
             var returnType = seller?.Role == UserRole.Partner 
                 ? ReturnType.PartnerReturn 
@@ -65,7 +66,7 @@ namespace NexusAs.Application.Services
             var returnEntity = new Return
             {
                 SaleId = dto.SaleId,
-                Date = DateTime.Now,
+                Date = DateTimeHelper.Now,
                 Notes = dto.Notes,
                 UserId = userId,
                 Type = returnType,
@@ -169,7 +170,7 @@ namespace NexusAs.Application.Services
                 var movement = new StockMovement
                 {
                     ProductId = returnDetail.ProductId,
-                    Date = DateTime.Now,
+                    Date = DateTimeHelper.Now,
                     Type = MovementType.Entry,
                     Quantity = returnDetail.Quantity,
                     StockBefore = stockBefore,

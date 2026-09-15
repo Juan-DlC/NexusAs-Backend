@@ -285,7 +285,7 @@ namespace NexusAs.Infrastructure.Services
                     {
                         col.Item().LineHorizontal(1).LineColor(_reportStyle.ColorAcento);
                         col.Item().PaddingTop(4).AlignCenter()
-                            .Text($"AS Accesorios — Generado: {DateTime.Now:dd/MM/yyyy HH:mm}")
+                            .Text("AS Accesorios")
                             .FontSize(8).FontColor(_reportStyle.ColorAcento).Italic();
                     });
                 });

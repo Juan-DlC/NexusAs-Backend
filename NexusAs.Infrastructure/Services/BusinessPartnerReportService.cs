@@ -159,10 +159,7 @@ namespace NexusAs.Infrastructure.Services
                         }
                     });
 
-                    page.Footer().AlignCenter().Text(text =>
-                    {
-                        text.Span($"Generado el {DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(9).FontColor(Colors.Grey.Darken1);
-                    });
+                    // Footer removido - no mostrar fecha de generación
                 });
             });
 

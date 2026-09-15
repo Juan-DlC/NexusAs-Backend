@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using NexusAs.Application.DTOs.Common;
 using NexusAs.Application.DTOs.Sales;
+using NexusAs.Application.Helpers;
 using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Entities;
 using NexusAs.Domain.Enums;
@@ -72,7 +73,7 @@ namespace NexusAs.Application.Services
             {
                 var existingSales = await _unitOfWork.Sales.FindAsync(s => 
                     s.RequestId == dto.RequestId && 
-                    s.Date >= DateTime.Now.AddMinutes(-5));
+                    s.Date >= DateTimeHelper.Now.AddMinutes(-5));
                 var existing = existingSales.FirstOrDefault();
                 
                 if (existing != null)
@@ -215,7 +216,7 @@ namespace NexusAs.Application.Services
             var sale = new Sale
             {
                 SaleNumber = saleNumber,
-                Date = DateTime.Now,
+                Date = DateTimeHelper.Now,
                 Subtotal = subtotal,
                 Discount = discount,
                 DiscountPercent = discountPercent,
@@ -252,7 +253,7 @@ namespace NexusAs.Application.Services
                 var movement = new StockMovement
                 {
                     ProductId = detailDto.ProductId,
-                    Date = DateTime.Now,
+                    Date = DateTimeHelper.Now,
                     Type = MovementType.Exit,
                     Quantity = -detailDto.Quantity,
                     StockBefore = stockBefore,
@@ -351,7 +352,7 @@ namespace NexusAs.Application.Services
                         PartnerEarning = Math.Round(partnerEarning * detailDto.Quantity, 0),
                         AsEarning = Math.Round(asEarning * detailDto.Quantity, 0),
                         IsPartnership = product.IsPartnership,
-                        Date = DateTime.Now
+                        Date = DateTimeHelper.Now
                     };
                     await _unitOfWork.PartnerSales.AddAsync(partnerSale);
                 }

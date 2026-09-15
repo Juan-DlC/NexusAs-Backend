@@ -154,9 +154,7 @@ namespace NexusAs.Infrastructure.Services
                                     x.Span(" de ").FontSize(8);
                                     x.TotalPages().FontSize(8);
                                 });
-                            row.RelativeItem().AlignRight()
-                                .Text($"Generado: {DateTime.Now:dd/MM/yyyy HH:mm}")
-                                .FontSize(8).FontColor(_reportStyle.ColorPrincipal);
+                            // Fecha de generación removida
                         });
                     });
                 });

@@ -1,6 +1,7 @@
 using AutoMapper;
 using NexusAs.Application.DTOs.BusinessPartners;
 using NexusAs.Application.DTOs.Common;
+using NexusAs.Application.Helpers;
 using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Entities;
 using NexusAs.Domain.Exceptions;
@@ -265,7 +266,7 @@ namespace NexusAs.Application.Services
             {
                 LiquidationNumber = liquidationNumber,
                 BusinessPartnerId = businessPartnerId,
-                LiquidationDate = DateTime.Now,
+                LiquidationDate = DateTimeHelper.Now,
                 FromDate = fromDate,
                 ToDate = toDate,
                 TotalAmount = preview.TotalBusinessPartnerAmount,

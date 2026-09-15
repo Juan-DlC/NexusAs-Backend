@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using NexusAs.Application.DTOs.Stock;
+using NexusAs.Application.Helpers;
 using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Entities;
 using NexusAs.Domain.Enums;
@@ -44,7 +45,7 @@ namespace NexusAs.Application.Services
             var movement = new StockMovement
             {
                 ProductId = dto.ProductId,
-                Date = DateTime.Now,
+                Date = DateTimeHelper.Now,
                 Type = MovementType.Entry,
                 Quantity = dto.Quantity,
                 StockBefore = stockBefore,

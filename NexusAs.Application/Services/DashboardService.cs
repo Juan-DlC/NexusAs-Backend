@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using NexusAs.Application.DTOs.Dashboard;
 using NexusAs.Application.DTOs.Products;
+using NexusAs.Application.Helpers;
 using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Enums;
 
@@ -21,8 +22,8 @@ namespace NexusAs.Application.Services
 
         public async Task<DashboardDto> GetSummaryAsync()
         {
-            // FIX: Usar hora LOCAL para que coincida con DateTime.Now usado al crear ventas
-            var today = DateTime.Now.Date;
+            // FIX: Usar hora LOCAL para que coincida con DateTimeHelper.Now usado al crear ventas
+            var today = DateTimeHelper.Today;
             var tomorrow = today.AddDays(1);
 
             var salesList = await _unitOfWork.Sales.GetTodaySalesAsync(today, tomorrow);
@@ -52,8 +53,8 @@ namespace NexusAs.Application.Services
         // TAREA 2: Nuevo método con ventas recientes y PaymentMethodName
         public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(int userId, string userRole)
         {
-            // FIX: Usar hora LOCAL para que coincida con DateTime.Now usado al crear ventas
-            var today = DateTime.Now.Date;
+            // FIX: Usar hora LOCAL para que coincida con DateTimeHelper.Now usado al crear ventas
+            var today = DateTimeHelper.Today;
             var tomorrow = today.AddDays(1);
 
             // Ventas de hoy (filtrar por Date, no por CreatedAt)

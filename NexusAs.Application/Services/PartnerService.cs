@@ -1,11 +1,12 @@
 ﻿using AutoMapper;
+using NexusAs.Application.DTOs.Common;
 using NexusAs.Application.DTOs.Partners;
+using NexusAs.Application.DTOs.Sales;
+using NexusAs.Application.Helpers;
 using NexusAs.Application.Interfaces;
 using NexusAs.Domain.Entities;
 using NexusAs.Domain.Enums;
 using NexusAs.Domain.Exceptions;
-using NexusAs.Application.DTOs.Common;
-using NexusAs.Application.DTOs.Sales;
 
 namespace NexusAs.Application.Services
 {
@@ -398,7 +399,7 @@ namespace NexusAs.Application.Services
                 PartnerConfigId = partnerConfigId,
                 Amount = dto.Amount,
                 Type = type,
-                Date = DateTime.Now,
+                Date = DateTimeHelper.Now,
                 Notes = dto.Notes,
                 PeriodFrom = dto.PeriodFrom,
                 PeriodTo = dto.PeriodTo,
