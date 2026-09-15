@@ -51,9 +51,6 @@ namespace NexusAs.Infrastructure.Services
                                 titleCol.Item().PaddingLeft(8).PaddingTop(2)
                                     .Text("Catálogo de Productos")
                                     .FontSize(13).Bold().FontColor(_reportStyle.ColorAcento);
-                                titleCol.Item().PaddingLeft(8)
-                                    .Text($"Generado: {DateTime.Now:dd/MM/yyyy HH:mm}")
-                                    .FontSize(9).FontColor(_reportStyle.ColorPrincipal);
                             });
                         });
                         col.Item().PaddingTop(6)

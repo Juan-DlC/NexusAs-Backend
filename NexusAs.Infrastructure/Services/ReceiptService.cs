@@ -301,13 +301,7 @@ namespace NexusAs.Infrastructure.Services
                             });
                     });
 
-                    page.Footer().Column(col =>
-                    {
-                        col.Item().LineHorizontal(0.5f).LineColor(_reportStyle.ColorBordes);
-                        col.Item().PaddingTop(6).AlignCenter()
-                            .Text($"Documento generado el {DateTime.Now:dd/MM/yyyy HH:mm}")
-                            .FontSize(7).FontColor(_reportStyle.ColorTextoSecundario);
-                    });
+                    // Footer removido - no mostrar fecha de generación
                 });
             });
 
