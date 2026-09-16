@@ -208,7 +208,7 @@ namespace NexusAs.Application.Services
                     ProductName = saleDetail.Product.Name,
                     Quantity = saleDetail.Quantity,
                     CostPrice = saleDetail.Product.Cost,
-                    SalePrice = saleDetail.Product.SalePrice,
+                    SalePrice = saleDetail.UnitPrice,  // Precio real usado en la venta
                     GrossProfit = Math.Round(grossProfit, 2),
                     PartnerCommissionPercent = 0,
                     PartnerCommissionAmount = 0,
