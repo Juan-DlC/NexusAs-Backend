@@ -3,6 +3,7 @@ using NexusAs.Application.DTOs.Categories;
 using NexusAs.Application.DTOs.Customers;
 using NexusAs.Application.DTOs.Products;
 using NexusAs.Domain.Entities;
+using NexusAs.Domain.Enums;
 using NexusAs.Application.DTOs.Sales;
 using NexusAs.Application.DTOs.Credits;
 using NexusAs.Application.DTOs.Stock;
@@ -73,7 +74,10 @@ namespace NexusAs.Application.Mappings
                     ? src.PaymentMethodEntity.Name : string.Empty))
             .ForMember(dest => dest.CustomerName,
                 opt => opt.MapFrom(src => src.Customer != null
-                    ? src.Customer.Name : null))
+                    ? src.Customer.Name
+                    : (src.User != null && src.User.Role == UserRole.Partner
+                        ? src.User.FullName + " (Mayorista)"
+                        : null)))
             .ForMember(dest => dest.SellerName,
                 opt => opt.MapFrom(src => src.User != null
                     ? src.User.FullName : string.Empty))
@@ -103,7 +107,7 @@ namespace NexusAs.Application.Mappings
                     opt => opt.MapFrom(src => src.Role.ToString()));
 
             //Credit
-            // BUG 3 FIX: Agregar SellerName y mejorar CustomerName para mostrar socia
+            // BUG 3 FIX: Agregar SellerName y mejorar CustomerName para mostrar mayorista
             CreateMap<Credit, CreditDto>()
                 .ForMember(dest => dest.Status,
                     opt => opt.MapFrom(src => src.Status.ToString()))
@@ -114,7 +118,7 @@ namespace NexusAs.Application.Mappings
                     opt => opt.MapFrom(src => src.Customer != null
                         ? src.Customer.Name
                         : (src.Sale != null && src.Sale.User != null
-                            ? src.Sale.User.FullName + " (Socia)"
+                            ? src.Sale.User.FullName + " (Mayorista)"
                             : "Sin cliente")))
                 .ForMember(dest => dest.SaleNumber,
                     opt => opt.MapFrom(src => src.Sale != null
