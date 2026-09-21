@@ -374,11 +374,11 @@ namespace NexusAs.Infrastructure.Services
 
                                 row.RelativeItem().PaddingLeft(12).AlignMiddle().Column(infoCol =>
                                 {
-                                    infoCol.Item().Text("FACTURA SOCIA VENDEDORA")
+                                    infoCol.Item().Text("FACTURA MAYORISTA")
                                         .FontSize(10).Bold().FontColor(_reportStyle.ColorTextoSecundario);
                                     
                                     infoCol.Item().PaddingTop(3).Text($"Factura: {sale.SaleNumber}")
-                                        .Bold().FontSize(12).FontColor(_reportStyle.ColorPrincipal);
+                                        .Bold().FontSize(8).FontColor(_reportStyle.ColorPrincipal);
                                     
                                     infoCol.Item().PaddingTop(1).Text($"Fecha: {sale.Date:dd/MM/yyyy}")
                                         .FontSize(9).FontColor(_reportStyle.ColorTextoSecundario);
@@ -388,10 +388,6 @@ namespace NexusAs.Infrastructure.Services
                                     
                                     infoCol.Item().Text($"Método de pago: {sale.PaymentMethodEntity?.Name ?? "Contado"}")
                                         .FontSize(9).FontColor(_reportStyle.ColorTextoSecundario);
-                                    
-                                    if (!string.IsNullOrEmpty(sale.Notes))
-                                        infoCol.Item().Text($"Notas: {sale.Notes}")
-                                            .FontSize(8).Italic().FontColor(_reportStyle.ColorTextoSecundario);
                                 });
                             });
                             
@@ -444,9 +440,9 @@ namespace NexusAs.Infrastructure.Services
 
                                     table.Cell().Background(bg).Padding(6).Column(nameCol =>
                                     {
-                                        nameCol.Item().Text(detail.Product?.Name ?? "-").FontSize(9);
-                                        if (detail.Product?.IsPartnership == true)
-                                            nameCol.Item().Text("Alianza").FontSize(7).FontColor(_reportStyle.ColorTextoSecundario);
+                                        nameCol.Item().Text(detail.Product?.Name ?? "-").FontSize(9).Bold();
+                                        if (!string.IsNullOrEmpty(detail.Product?.Description))
+                                            nameCol.Item().Text(detail.Product.Description).FontSize(7).FontColor(_reportStyle.ColorTextoSecundario).Italic();
                                     });
 
                                     table.Cell().Background(bg).Padding(6).AlignCenter().Text(detail.Quantity.ToString()).FontSize(9);
@@ -455,6 +451,20 @@ namespace NexusAs.Infrastructure.Services
                                     table.Cell().Background(bg).Padding(6).AlignRight().Text($"${suggestedPrice:N0}").FontSize(9).FontColor(_reportStyle.ColorExito);
                                 }
                             });
+
+                            // Notas de la venta (si existen)
+                            if (!string.IsNullOrEmpty(sale.Notes))
+                            {
+                                col.Item().PaddingTop(8).Border(1).BorderColor(_reportStyle.ColorBordes).Padding(8).Column(notesSection =>
+                                {
+                                    notesSection.Item().Row(titleRow =>
+                                    {
+                                        titleRow.AutoItem().Text("📝 ").FontSize(8);
+                                        titleRow.AutoItem().Text("Notas de la venta").Bold().FontSize(8).FontColor(_reportStyle.ColorPrincipal);
+                                    });
+                                    notesSection.Item().PaddingTop(4).Text(sale.Notes).FontSize(7).FontColor(_reportStyle.ColorTextoSecundario);
+                                });
+                            }
 
                             // Espacio
                             col.Item().Height(20);
@@ -465,7 +475,7 @@ namespace NexusAs.Infrastructure.Services
                                 summary.Item().Row(row =>
                                 {
                                     row.RelativeItem().Text("TOTAL A PAGAR A AS").Bold().FontSize(12).FontColor(_reportStyle.ColorPrincipal);
-                                    row.ConstantItem(140).AlignRight().Text($"${sale.Total:N0}").Bold().FontSize(14).FontColor(_reportStyle.ColorPrincipal);
+                                    row.ConstantItem(140).AlignRight().Text($"${sale.Total:N0}").Bold().FontSize(12).FontColor(_reportStyle.ColorPrincipal);
                                 });
 
                                 // Mostrar crédito si existe
