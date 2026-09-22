@@ -32,6 +32,8 @@ namespace NexusAs.Infrastructure.Services
                     .ThenInclude(sd => sd.Product)
                 .Include(s => s.Credit)
                     .ThenInclude(c => c!.Installments)
+                .Include(s => s.Returns.Where(r => r.IsActive))
+                    .ThenInclude(r => r.ReturnDetails)
                 .FirstOrDefaultAsync(s => s.Id == saleId);
 
             if (sale == null)
@@ -44,13 +46,13 @@ namespace NexusAs.Infrastructure.Services
             {
                 container.Page(page =>
                 {
-                    page.Size(PageSizes.A5);
-                    page.Margin(1, Unit.Centimetre);
+                    page.Size(PageSizes.Letter);
+                    page.Margin(0.6f, Unit.Centimetre);
                     page.DefaultTextStyle(x => x.FontSize(10).FontColor(_reportStyle.ColorPrincipal));
 
                     page.Header().Column(col =>
                     {
-                        // Encabezado compacto: Logo + Detalles de Factura
+                        // Encabezado compacto: Logo + Detalles de Factura + Cliente (si existe)
                         col.Item().Row(row =>
                         {
                             // Logo más pequeño
@@ -59,6 +61,7 @@ namespace NexusAs.Infrastructure.Services
                                 row.ConstantItem(70).AlignMiddle().Image(logoBytes).FitArea();
                             }
 
+                            // Información de factura (columna izquierda)
                             row.RelativeItem().PaddingLeft(10).AlignMiddle().Column(infoCol =>
                             {
                                 infoCol.Item().Text("RECIBO DE VENTA")
@@ -74,43 +77,36 @@ namespace NexusAs.Infrastructure.Services
                                 infoCol.Item().Text($"Vendedor: {vendedor}")
                                     .FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
                             });
+
+                            // Información del cliente (columna derecha, si existe)
+                            if (sale.Customer != null)
+                            {
+                                row.RelativeItem().PaddingLeft(10).AlignMiddle().Column(clientCol =>
+                                {
+                                    clientCol.Item().Text("CLIENTE:")
+                                        .FontSize(8).Bold().FontColor(_reportStyle.ColorTextoSecundario);
+                                    
+                                    clientCol.Item().Text(sale.Customer.Name)
+                                        .FontSize(8).FontColor(_reportStyle.ColorPrincipal);
+                                    
+                                    if (!string.IsNullOrEmpty(sale.Customer.Document))
+                                    {
+                                        clientCol.Item().Text($"Doc: {sale.Customer.Document}")
+                                            .FontSize(7).FontColor(_reportStyle.ColorTextoSecundario);
+                                    }
+                                    
+                                    if (!string.IsNullOrEmpty(sale.Customer.Phone))
+                                    {
+                                        clientCol.Item().Text($"Tel: {sale.Customer.Phone}")
+                                            .FontSize(7).FontColor(_reportStyle.ColorTextoSecundario);
+                                    }
+                                });
+                            }
                         });
 
                         // Línea separadora más delgada
-                        col.Item().PaddingTop(3).PaddingBottom(3)
+                        col.Item().PaddingTop(2).PaddingBottom(2)
                             .LineHorizontal(0.5f).LineColor(_reportStyle.ColorAcento);
-
-                        // Información del cliente EN LÍNEA HORIZONTAL (si existe)
-                        if (sale.Customer != null)
-                        {
-                            col.Item().PaddingBottom(3).Background("#F5F5F5").Padding(4).Row(row =>
-                            {
-                                row.AutoItem().Text("CLIENTE: ")
-                                    .FontSize(8).Bold().FontColor(_reportStyle.ColorTextoSecundario);
-                                
-                                row.AutoItem().PaddingLeft(3).Text(sale.Customer.Name)
-                                    .FontSize(8).FontColor(_reportStyle.ColorPrincipal);
-                                
-                                if (!string.IsNullOrEmpty(sale.Customer.Document))
-                                {
-                                    row.AutoItem().PaddingLeft(8).Text("•")
-                                        .FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
-                                    row.AutoItem().PaddingLeft(3).Text($"Doc: {sale.Customer.Document}")
-                                        .FontSize(7).FontColor(_reportStyle.ColorTextoSecundario);
-                                }
-                                
-                                if (!string.IsNullOrEmpty(sale.Customer.Phone))
-                                {
-                                    row.AutoItem().PaddingLeft(8).Text("•")
-                                        .FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
-                                    row.AutoItem().PaddingLeft(3).Text($"Tel: {sale.Customer.Phone}")
-                                        .FontSize(7).FontColor(_reportStyle.ColorTextoSecundario);
-                                }
-                            });
-                            
-                            col.Item().PaddingBottom(2)
-                                .LineHorizontal(0.5f).LineColor(_reportStyle.ColorBordes);
-                        }
                     });
 
                     page.Content().Column(col =>
@@ -122,31 +118,54 @@ namespace NexusAs.Infrastructure.Services
                         {
                             table.ColumnsDefinition(c =>
                             {
-                                c.ConstantColumn(55);  // Código más compacto
-                                c.RelativeColumn(3);   // Producto
-                                c.ConstantColumn(30);  // Cant.
-                                c.RelativeColumn(2);   // Precio Unit.
-                                c.RelativeColumn(2);   // Subtotal
+                                c.ConstantColumn(70);  // Código - más espacio
+                                c.RelativeColumn(4);   // Producto - más espacio
+                                c.ConstantColumn(35);  // Cant. - reducido
+                                c.ConstantColumn(70);  // Precio Unit. - reducido y fijo
+                                c.ConstantColumn(70);  // Subtotal - reducido y fijo
                             });
 
                             table.Header(header =>
                             {
-                                foreach (var title in new[]
-                                    { "Código", "Producto", "Cant.", "Precio Unit.", "Subtotal" })
-                                {
-                                    header.Cell().Background(_reportStyle.ColorTablaHeader)
-                                        .Padding(4).Text(title)
-                                        .FontColor(Colors.White).Bold().FontSize(8);
-                                }
+                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                    .Padding(4).AlignCenter().Text("Código")
+                                    .FontColor(Colors.White).Bold().FontSize(8);
+                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                    .Padding(4).AlignLeft().Text("Producto")
+                                    .FontColor(Colors.White).Bold().FontSize(8);
+                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                    .Padding(4).AlignCenter().Text("Cant.")
+                                    .FontColor(Colors.White).Bold().FontSize(8);
+                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                    .Padding(4).AlignCenter().Text("Precio Unit.")
+                                    .FontColor(Colors.White).Bold().FontSize(8);
+                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                    .Padding(4).AlignCenter().Text("Subtotal")
+                                    .FontColor(Colors.White).Bold().FontSize(8);
                             });
 
                             var details = sale.SaleDetails.ToList();
+                            
+                            // Calcular cantidades devueltas por producto
+                            var returnedQuantities = sale.Returns
+                                .Where(r => r.IsActive)
+                                .SelectMany(r => r.ReturnDetails)
+                                .GroupBy(rd => rd.ProductId)
+                                .ToDictionary(g => g.Key, g => g.Sum(rd => rd.Quantity));
+                            
                             foreach (var detail in details)
                             {
+                                // Calcular cantidad neta (vendida - devuelta)
+                                var returnedQty = returnedQuantities.GetValueOrDefault(detail.ProductId, 0);
+                                var netQuantity = detail.Quantity - returnedQty;
+                                
+                                // Solo mostrar productos con cantidad neta mayor a 0
+                                if (netQuantity <= 0) continue;
+                                
                                 var bg = details.IndexOf(detail) % 2 == 0
                                      ? "#FFFFFF" : _reportStyle.ColorFilasAlternas;
                                 
-                                table.Cell().Background(bg).Padding(4)
+                                table.Cell().Background(bg).Padding(4).AlignCenter()
                                     .Text(detail.Product?.Code ?? "").FontSize(7);
                                 
                                 table.Cell().Background(bg).Padding(4).Column(col =>
@@ -158,11 +177,11 @@ namespace NexusAs.Infrastructure.Services
                                 });
                                 
                                 table.Cell().Background(bg).Padding(4).AlignCenter()
-                                    .Text(detail.Quantity.ToString()).FontSize(8);
-                                table.Cell().Background(bg).Padding(4).AlignRight()
+                                    .Text(netQuantity.ToString()).FontSize(8);
+                                table.Cell().Background(bg).Padding(4).AlignCenter()
                                     .Text($"${detail.UnitPrice:N0}").FontSize(8);
-                                table.Cell().Background(bg).Padding(4).AlignRight()
-                                    .Text($"${detail.Subtotal:N0}").FontSize(8).Bold();
+                                table.Cell().Background(bg).Padding(4).AlignCenter()
+                                    .Text($"${detail.UnitPrice * netQuantity:N0}").FontSize(8).Bold();
                             }
                         });
 
@@ -247,12 +266,15 @@ namespace NexusAs.Infrastructure.Services
 
                                             it.Header(header =>
                                             {
-                                                foreach (var title in new[] { "Cuota", "Valor", "Estado" })
-                                                {
-                                                    header.Cell().Background(_reportStyle.ColorTablaHeader)
-                                                        .Padding(3).Text(title)
-                                                        .FontColor(Colors.White).Bold().FontSize(7);
-                                                }
+                                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                                    .Padding(3).AlignCenter().Text("Cuota")
+                                                    .FontColor(Colors.White).Bold().FontSize(7);
+                                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                                    .Padding(3).AlignCenter().Text("Valor")
+                                                    .FontColor(Colors.White).Bold().FontSize(7);
+                                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                                    .Padding(3).AlignCenter().Text("Estado")
+                                                    .FontColor(Colors.White).Bold().FontSize(7);
                                             });
 
                                             var installments = sale.Credit.Installments
@@ -261,9 +283,9 @@ namespace NexusAs.Infrastructure.Services
                                             {
                                                 var bg = installments.IndexOf(inst) % 2 == 0
                                                     ? "#FFFFFF" : _reportStyle.ColorFilasAlternas;
-                                                it.Cell().Background(bg).Padding(3)
+                                                it.Cell().Background(bg).Padding(3).AlignCenter()
                                                     .Text($"#{inst.Number}").FontSize(7);
-                                                it.Cell().Background(bg).Padding(3).AlignRight()
+                                                it.Cell().Background(bg).Padding(3).AlignCenter()
                                                     .Text($"${inst.Amount:N0}").FontSize(7);
                                                 it.Cell().Background(bg).Padding(3).AlignCenter()
                                                     .Text(inst.IsPaid ? "Pagada" : "Pendiente")
@@ -275,52 +297,64 @@ namespace NexusAs.Infrastructure.Services
                                 });
                         }
 
-                        // Totales y método de pago
+                        // Totales y Nota Importante en dos columnas
                         col.Item().PaddingTop(4).PaddingBottom(3)
                             .BorderTop(1).BorderColor(_reportStyle.ColorBordes)
-                            .PaddingTop(3).Table(table =>
+                            .PaddingTop(3).Row(row =>
                         {
-                            table.ColumnsDefinition(c =>
+                            // Columna izquierda: Nota importante
+                            row.RelativeItem(2).PaddingRight(10)
+                                .Border(1).BorderColor(_reportStyle.ColorBordes)
+                                .Padding(5).Column(noteCol =>
+                                {
+                                    noteCol.Item().Text("NOTA IMPORTANTE")
+                                        .Bold().FontSize(7).FontColor(_reportStyle.ColorPrincipal);
+                                    noteCol.Item().PaddingTop(2).Text(
+                                        "Este documento es un recibo interno y NO constituye factura electrónica de venta ante la DIAN. " +
+                                        "No tiene validez tributaria ni fiscal. Para facturación electrónica oficial, consulte con su contador.")
+                                        .FontSize(6).FontColor(_reportStyle.ColorTextoSecundario);
+                                });
+
+                            // Columna derecha: Totales y método de pago
+                            row.RelativeItem(1).Column(totalsCol =>
                             {
-                                c.RelativeColumn(3);
-                                c.RelativeColumn(2);
+                                totalsCol.Item().Row(subtotalRow =>
+                                {
+                                    subtotalRow.RelativeItem().Text("Subtotal:")
+                                        .FontSize(9).FontColor(_reportStyle.ColorTextoSecundario);
+                                    subtotalRow.AutoItem().Text($"${sale.Subtotal:N0}")
+                                        .FontSize(9);
+                                });
+
+                                if (sale.Discount > 0)
+                                {
+                                    totalsCol.Item().Row(discountRow =>
+                                    {
+                                        discountRow.RelativeItem().Text("Descuento:")
+                                            .FontSize(9).FontColor(_reportStyle.ColorExito);
+                                        discountRow.AutoItem().Text($"-${sale.Discount:N0}")
+                                            .FontSize(9).FontColor(_reportStyle.ColorExito);
+                                    });
+                                }
+
+                                totalsCol.Item().PaddingTop(2).Row(totalRow =>
+                                {
+                                    totalRow.RelativeItem().Text("TOTAL:")
+                                        .Bold().FontSize(11).FontColor(_reportStyle.ColorPrincipal);
+                                    totalRow.AutoItem().Text($"${sale.Total:N0}")
+                                        .Bold().FontSize(11).FontColor(_reportStyle.ColorPrincipal);
+                                });
+
+                                totalsCol.Item().PaddingTop(3).Row(paymentRow =>
+                                {
+                                    paymentRow.RelativeItem().Text("Método de pago:")
+                                        .FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
+                                    paymentRow.AutoItem().Text(sale.PaymentMethodEntity?.Code == "CASH"
+                                        ? "Contado" : "Crédito")
+                                        .FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
+                                });
                             });
-
-                            table.Cell().Text("Subtotal:").FontSize(9).FontColor(_reportStyle.ColorTextoSecundario);
-                            table.Cell().AlignRight().Text($"${sale.Subtotal:N0}").FontSize(9);
-
-                            if (sale.Discount > 0)
-                            {
-                                table.Cell().Text("Descuento:")
-                                    .FontSize(9).FontColor(_reportStyle.ColorExito);
-                                table.Cell().AlignRight()
-                                    .Text($"-${sale.Discount:N0}")
-                                    .FontSize(9).FontColor(_reportStyle.ColorExito);
-                            }
-
-                            table.Cell().PaddingTop(2).Text("TOTAL:").Bold().FontSize(11).FontColor(_reportStyle.ColorPrincipal);
-                            table.Cell().PaddingTop(2).AlignRight()
-                                .Text($"${sale.Total:N0}")
-                                .Bold().FontSize(11).FontColor(_reportStyle.ColorPrincipal);
-
-                            table.Cell().PaddingTop(3).Text("Método de pago:").FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
-                            table.Cell().PaddingTop(3).AlignRight()
-                                .Text(sale.PaymentMethodEntity?.Code == "CASH"
-                                    ? "Contado" : "Crédito")
-                                .FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
                         });
-
-                        col.Item().PaddingTop(4)
-                            .Border(1).BorderColor(_reportStyle.ColorBordes)
-                            .Padding(5).Column(noteCol =>
-                            {
-                                noteCol.Item().Text("NOTA IMPORTANTE")
-                                    .Bold().FontSize(7).FontColor(_reportStyle.ColorPrincipal);
-                                noteCol.Item().PaddingTop(2).Text(
-                                    "Este documento es un recibo interno y NO constituye factura electrónica de venta ante la DIAN. " +
-                                    "No tiene validez tributaria ni fiscal. Para facturación electrónica oficial, consulte con su contador.")
-                                    .FontSize(6).FontColor(_reportStyle.ColorTextoSecundario);
-                            });
                     });
 
                     // Footer removido - no mostrar fecha de generación
@@ -340,6 +374,8 @@ namespace NexusAs.Infrastructure.Services
                 .Include(s => s.SaleDetails)
                     .ThenInclude(sd => sd.Product)
                 .Include(s => s.Credit)
+                .Include(s => s.Returns.Where(r => r.IsActive))
+                    .ThenInclude(r => r.ReturnDetails)
                 .FirstOrDefaultAsync(s => s.Id == saleId);
 
             if (sale == null)
@@ -427,16 +463,30 @@ namespace NexusAs.Infrastructure.Services
                                         .Padding(6).AlignRight().Text("Precio sugerido").Bold().FontColor(Colors.White).FontSize(9);
                                 });
 
+                                // Calcular cantidades devueltas por producto
+                                var returnedQuantities = sale.Returns
+                                    .Where(r => r.IsActive)
+                                    .SelectMany(r => r.ReturnDetails)
+                                    .GroupBy(rd => rd.ProductId)
+                                    .ToDictionary(g => g.Key, g => g.Sum(rd => rd.Quantity));
+
                                 // Filas de productos
                                 bool alternate = false;
                                 foreach (var detail in sale.SaleDetails)
                                 {
+                                    // Calcular cantidad neta (vendida - devuelta)
+                                    var returnedQty = returnedQuantities.GetValueOrDefault(detail.ProductId, 0);
+                                    var netQuantity = detail.Quantity - returnedQty;
+                                    
+                                    // Solo mostrar productos con cantidad neta mayor a 0
+                                    if (netQuantity <= 0) continue;
+                                    
                                     var bg = alternate ? _reportStyle.ColorFilasAlternas : "#FFFFFF";
                                     alternate = !alternate;
 
                                     var partnerPrice = detail.UnitPrice;
                                     var suggestedPrice = detail.Product?.SalePrice ?? detail.UnitPrice;
-                                    var totalToPay = partnerPrice * detail.Quantity;
+                                    var totalToPay = partnerPrice * netQuantity;
 
                                     table.Cell().Background(bg).Padding(6).Column(nameCol =>
                                     {
@@ -445,7 +495,7 @@ namespace NexusAs.Infrastructure.Services
                                             nameCol.Item().Text(detail.Product.Description).FontSize(7).FontColor(_reportStyle.ColorTextoSecundario).Italic();
                                     });
 
-                                    table.Cell().Background(bg).Padding(6).AlignCenter().Text(detail.Quantity.ToString()).FontSize(9);
+                                    table.Cell().Background(bg).Padding(6).AlignCenter().Text(netQuantity.ToString()).FontSize(9);
                                     table.Cell().Background(bg).Padding(6).AlignRight().Text($"${partnerPrice:N0}").FontSize(9).Bold();
                                     table.Cell().Background(bg).Padding(6).AlignRight().Text($"${totalToPay:N0}").FontSize(9).Bold().FontColor(_reportStyle.ColorPrincipal);
                                     table.Cell().Background(bg).Padding(6).AlignRight().Text($"${suggestedPrice:N0}").FontSize(9).FontColor(_reportStyle.ColorExito);
