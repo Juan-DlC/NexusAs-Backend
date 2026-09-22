@@ -383,7 +383,7 @@ namespace NexusAs.Infrastructure.Services
                                     infoCol.Item().PaddingTop(1).Text($"Fecha: {sale.Date:dd/MM/yyyy}")
                                         .FontSize(9).FontColor(_reportStyle.ColorTextoSecundario);
                                     
-                                    infoCol.Item().Text($"Socia: {seller?.FullName ?? "Sin nombre"}")
+                                    infoCol.Item().Text($"Mayorista: {seller?.FullName ?? "Sin nombre"}")
                                         .FontSize(9).FontColor(_reportStyle.ColorTextoSecundario);
                                     
                                     infoCol.Item().Text($"Método de pago: {sale.PaymentMethodEntity?.Name ?? "Contado"}")
