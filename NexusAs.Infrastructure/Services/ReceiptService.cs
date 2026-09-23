@@ -392,76 +392,78 @@ namespace NexusAs.Infrastructure.Services
             {
                 container.Page(page =>
                 {
-                    page.Size(PageSizes.A4);
-                    page.Margin(35);
-                    page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(9));
+                    page.Size(PageSizes.Letter);
+                    page.Margin(0.6f, Unit.Centimetre);
+                    page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(10).FontColor(_reportStyle.ColorPrincipal));
 
-                    page.Header().Element(header =>
+                    page.Header().Column(col =>
                     {
-                        header.Column(col =>
+                        // Encabezado compacto: Logo + Detalles de Factura
+                        col.Item().Row(row =>
                         {
-                            col.Item().Row(row =>
+                            // Logo más pequeño
+                            if (logoBytes != null)
                             {
-                                // Logo alineado verticalmente
-                                if (logoBytes != null)
-                                {
-                                    row.ConstantItem(100).AlignMiddle().Image(logoBytes).FitArea();
-                                }
+                                row.ConstantItem(70).AlignMiddle().Image(logoBytes).FitArea();
+                            }
 
-                                row.RelativeItem().PaddingLeft(12).AlignMiddle().Column(infoCol =>
-                                {
-                                    infoCol.Item().Text("FACTURA MAYORISTA")
-                                        .FontSize(10).Bold().FontColor(_reportStyle.ColorTextoSecundario);
-                                    
-                                    infoCol.Item().PaddingTop(3).Text($"Factura: {sale.SaleNumber}")
-                                        .Bold().FontSize(8).FontColor(_reportStyle.ColorPrincipal);
-                                    
-                                    infoCol.Item().PaddingTop(1).Text($"Fecha: {sale.Date:dd/MM/yyyy}")
-                                        .FontSize(9).FontColor(_reportStyle.ColorTextoSecundario);
-                                    
-                                    infoCol.Item().Text($"Mayorista: {seller?.FullName ?? "Sin nombre"}")
-                                        .FontSize(9).FontColor(_reportStyle.ColorTextoSecundario);
-                                    
-                                    infoCol.Item().Text($"Método de pago: {sale.PaymentMethodEntity?.Name ?? "Contado"}")
-                                        .FontSize(9).FontColor(_reportStyle.ColorTextoSecundario);
-                                });
+                            // Información de factura
+                            row.RelativeItem().PaddingLeft(10).AlignMiddle().Column(infoCol =>
+                            {
+                                infoCol.Item().Text("FACTURA MAYORISTA")
+                                    .FontSize(8).Bold().FontColor(_reportStyle.ColorTextoSecundario);
+                                
+                                infoCol.Item().Text($"Factura: {sale.SaleNumber}")
+                                    .Bold().FontSize(8).FontColor(_reportStyle.ColorPrincipal);
+                                
+                                infoCol.Item().Text($"Fecha: {sale.Date:dd/MM/yyyy HH:mm}")
+                                    .FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
+                                
+                                infoCol.Item().Text($"Mayorista: {seller?.FullName ?? "Sin nombre"}")
+                                    .FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
                             });
-                            
-                            col.Item().PaddingTop(8)
-                                .LineHorizontal(1).LineColor(_reportStyle.ColorAcento);
                         });
+
+                        // Línea separadora más delgada
+                        col.Item().PaddingTop(2).PaddingBottom(2)
+                            .LineHorizontal(0.5f).LineColor(_reportStyle.ColorAcento);
                     });
 
-                    page.Content().PaddingTop(15).Element(content =>
+                    page.Content().Column(col =>
                     {
-                        content.Column(col =>
-                        {
-                            // Tabla de productos
-                            col.Item().Table(table =>
-                            {
-                                table.ColumnsDefinition(c =>
-                                {
-                                    c.RelativeColumn(3);  // Producto
-                                    c.ConstantColumn(40); // Cant.
-                                    c.RelativeColumn(2);  // Te cuesta c/u
-                                    c.RelativeColumn(2);  // Total a pagar
-                                    c.RelativeColumn(2);  // Precio sugerido
-                                });
+                        col.Item().Text("DETALLE DE PRODUCTOS")
+                            .FontSize(9).Bold().FontColor(_reportStyle.ColorPrincipal);
 
-                                // Header de tabla
-                                table.Header(header =>
-                                {
-                                    header.Cell().Background(_reportStyle.ColorTablaHeader)
-                                        .Padding(6).Text("Producto").Bold().FontColor(Colors.White).FontSize(9);
-                                    header.Cell().Background(_reportStyle.ColorTablaHeader)
-                                        .Padding(6).AlignCenter().Text("Cant.").Bold().FontColor(Colors.White).FontSize(9);
-                                    header.Cell().Background(_reportStyle.ColorTablaHeader)
-                                        .Padding(6).AlignRight().Text("Te cuesta c/u").Bold().FontColor(Colors.White).FontSize(9);
-                                    header.Cell().Background(_reportStyle.ColorTablaHeader)
-                                        .Padding(6).AlignRight().Text("Total a pagar").Bold().FontColor(Colors.White).FontSize(9);
-                                    header.Cell().Background(_reportStyle.ColorTablaHeader)
-                                        .Padding(6).AlignRight().Text("Precio sugerido").Bold().FontColor(Colors.White).FontSize(9);
-                                });
+                        col.Item().PaddingTop(2).Table(table =>
+                        {
+                            table.ColumnsDefinition(c =>
+                            {
+                                c.RelativeColumn(4);   // Producto
+                                c.ConstantColumn(35);  // Cant.
+                                c.ConstantColumn(80);  // Te cuesta c/u
+                                c.ConstantColumn(80);  // Total a pagar
+                                c.ConstantColumn(80);  // Precio sugerido
+                            });
+
+                            // Header de tabla centrado
+                            table.Header(header =>
+                            {
+                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                    .Padding(4).AlignLeft().Text("Producto")
+                                    .FontColor(Colors.White).Bold().FontSize(8);
+                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                    .Padding(4).AlignCenter().Text("Cant.")
+                                    .FontColor(Colors.White).Bold().FontSize(8);
+                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                    .Padding(4).AlignCenter().Text("Te cuesta c/u")
+                                    .FontColor(Colors.White).Bold().FontSize(8);
+                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                    .Padding(4).AlignCenter().Text("Total a pagar")
+                                    .FontColor(Colors.White).Bold().FontSize(8);
+                                header.Cell().Background(_reportStyle.ColorTablaHeader)
+                                    .Padding(4).AlignCenter().Text("Precio sugerido")
+                                    .FontColor(Colors.White).Bold().FontSize(8);
+                            });
 
                                 // Calcular cantidades devueltas por producto
                                 var returnedQuantities = sale.Returns
@@ -488,70 +490,123 @@ namespace NexusAs.Infrastructure.Services
                                     var suggestedPrice = detail.Product?.SalePrice ?? detail.UnitPrice;
                                     var totalToPay = partnerPrice * netQuantity;
 
-                                    table.Cell().Background(bg).Padding(6).Column(nameCol =>
+                                    table.Cell().Background(bg).Padding(4).Column(nameCol =>
                                     {
-                                        nameCol.Item().Text(detail.Product?.Name ?? "-").FontSize(9).Bold();
+                                        nameCol.Item().Text(detail.Product?.Name ?? "-").FontSize(8).Bold();
                                         if (!string.IsNullOrEmpty(detail.Product?.Description))
-                                            nameCol.Item().Text(detail.Product.Description).FontSize(7).FontColor(_reportStyle.ColorTextoSecundario).Italic();
+                                            nameCol.Item().Text(detail.Product.Description).FontSize(6).FontColor(_reportStyle.ColorTextoSecundario).Italic();
                                     });
 
-                                    table.Cell().Background(bg).Padding(6).AlignCenter().Text(netQuantity.ToString()).FontSize(9);
-                                    table.Cell().Background(bg).Padding(6).AlignRight().Text($"${partnerPrice:N0}").FontSize(9).Bold();
-                                    table.Cell().Background(bg).Padding(6).AlignRight().Text($"${totalToPay:N0}").FontSize(9).Bold().FontColor(_reportStyle.ColorPrincipal);
-                                    table.Cell().Background(bg).Padding(6).AlignRight().Text($"${suggestedPrice:N0}").FontSize(9).FontColor(_reportStyle.ColorExito);
+                                    table.Cell().Background(bg).Padding(4).AlignCenter().Text(netQuantity.ToString()).FontSize(8);
+                                    table.Cell().Background(bg).Padding(4).AlignCenter().Text($"${partnerPrice:N0}").FontSize(8).Bold();
+                                    table.Cell().Background(bg).Padding(4).AlignCenter().Text($"${totalToPay:N0}").FontSize(8).Bold().FontColor(_reportStyle.ColorPrincipal);
+                                    table.Cell().Background(bg).Padding(4).AlignCenter().Text($"${suggestedPrice:N0}").FontSize(8).FontColor(_reportStyle.ColorExito);
                                 }
-                            });
+                        });
 
-                            // Notas de la venta (si existen)
-                            if (!string.IsNullOrEmpty(sale.Notes))
-                            {
-                                col.Item().PaddingTop(8).Border(1).BorderColor(_reportStyle.ColorBordes).Padding(8).Column(notesSection =>
+                        // Notas de la venta (si existen)
+                        if (!string.IsNullOrEmpty(sale.Notes))
+                        {
+                            col.Item().PaddingTop(3)
+                                .Border(1).BorderColor(_reportStyle.ColorBordes)
+                                .Padding(4).Row(row =>
                                 {
-                                    notesSection.Item().Row(titleRow =>
+                                    row.AutoItem().PaddingRight(4).AlignTop()
+                                        .Text("📝").FontSize(9);
+                                    
+                                    row.RelativeItem().Column(noteContent =>
                                     {
-                                        titleRow.AutoItem().Text("📝 ").FontSize(8);
-                                        titleRow.AutoItem().Text("Notas de la venta").Bold().FontSize(8).FontColor(_reportStyle.ColorPrincipal);
+                                        noteContent.Item().Text("Nota")
+                                            .Bold().FontSize(8).FontColor(_reportStyle.ColorPrincipal);
+                                        noteContent.Item().PaddingTop(1).Text(sale.Notes)
+                                            .FontSize(7).FontColor(_reportStyle.ColorTextoSecundario);
                                     });
-                                    notesSection.Item().PaddingTop(4).Text(sale.Notes).FontSize(7).FontColor(_reportStyle.ColorTextoSecundario);
                                 });
-                            }
+                        }
 
-                            // Espacio
-                            col.Item().Height(20);
-
-                            // Resumen financiero
-                            col.Item().Border(1).BorderColor(_reportStyle.ColorBordes).Padding(12).Column(summary =>
-                            {
-                                summary.Item().Row(row =>
+                        // Estado del crédito (si aplica)
+                        if (sale.Credit != null)
+                        {
+                            col.Item().PaddingTop(4)
+                                .Border(1).BorderColor(_reportStyle.ColorBordes)
+                                .Padding(5).Column(creditCol =>
                                 {
-                                    row.RelativeItem().Text("TOTAL A PAGAR A AS").Bold().FontSize(12).FontColor(_reportStyle.ColorPrincipal);
-                                    row.ConstantItem(140).AlignRight().Text($"${sale.Total:N0}").Bold().FontSize(12).FontColor(_reportStyle.ColorPrincipal);
+                                    creditCol.Item()
+                                        .Text("ESTADO DEL CRÉDITO")
+                                        .Bold().FontSize(9).FontColor(_reportStyle.ColorPrincipal);
+
+                                    creditCol.Item().PaddingTop(2).Table(t =>
+                                    {
+                                        t.ColumnsDefinition(c =>
+                                        {
+                                            c.RelativeColumn(2);
+                                            c.RelativeColumn(2);
+                                        });
+
+                                        t.Cell().Text("Valor total:").FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
+                                        t.Cell().AlignRight()
+                                            .Text($"${sale.Credit.TotalAmount:N0}").FontSize(8);
+
+                                        t.Cell().Text("Total abonado:")
+                                            .FontSize(8).FontColor(_reportStyle.ColorExito);
+                                        t.Cell().AlignRight()
+                                            .Text($"${sale.Credit.PaidAmount:N0}")
+                                            .FontSize(8).FontColor(_reportStyle.ColorExito);
+
+                                        t.Cell().Text("Saldo pendiente:")
+                                            .Bold().FontSize(9).FontColor(_reportStyle.ColorAlerta);
+                                        t.Cell().AlignRight()
+                                            .Text($"${sale.Credit.PendingAmount:N0}")
+                                            .Bold().FontSize(9).FontColor(_reportStyle.ColorAlerta);
+
+                                        t.Cell().PaddingTop(1).Text("Estado:").FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
+                                        t.Cell().PaddingTop(1).AlignRight().Text(
+                                            sale.Credit.Status == CreditStatus.Paid
+                                                ? "PAGADO" :
+                                            sale.Credit.Status == CreditStatus.Partial
+                                                ? "Pago parcial" : "Pendiente")
+                                            .FontSize(8).Bold();
+                                    });
+                                });
+                        }
+
+                        // Totales y método de pago con información de precios
+                        col.Item().PaddingTop(4).PaddingBottom(3)
+                            .BorderTop(1).BorderColor(_reportStyle.ColorBordes)
+                            .PaddingTop(3).Row(row =>
+                        {
+                            // Columna izquierda: Información de precios
+                            row.RelativeItem(2).PaddingRight(10)
+                                .Border(1).BorderColor(_reportStyle.ColorBordes)
+                                .Padding(5).Column(noteCol =>
+                                {
+                                    noteCol.Item().Text("ℹ INFORMACIÓN DE PRECIOS")
+                                        .Bold().FontSize(7).FontColor(_reportStyle.ColorPrincipal);
+                                    noteCol.Item().PaddingTop(2).Text(
+                                        "• Te cuesta c/u: Precio al que te entregamos cada producto\n" +
+                                        "• Precio sugerido: Precio recomendado de venta al público")
+                                        .FontSize(6).FontColor(_reportStyle.ColorTextoSecundario);
                                 });
 
-                                // Mostrar crédito si existe
-                                if (sale.Credit != null)
-                                {
-                                    summary.Item().PaddingTop(10).LineHorizontal(1).LineColor(_reportStyle.ColorBordes);
-                                    summary.Item().PaddingTop(8).Row(row =>
-                                    {
-                                        row.RelativeItem().Text("Abonado:").FontSize(9).FontColor(_reportStyle.ColorTextoSecundario);
-                                        row.ConstantItem(140).AlignRight().Text($"${sale.Credit.PaidAmount:N0}").FontSize(9).FontColor(_reportStyle.ColorExito);
-                                    });
-                                    summary.Item().PaddingTop(2).Row(row =>
-                                    {
-                                        row.RelativeItem().Text("Saldo pendiente:").Bold().FontSize(10);
-                                        row.ConstantItem(140).AlignRight().Text($"${sale.Credit.PendingAmount:N0}").Bold().FontSize(12).FontColor(_reportStyle.ColorAlerta);
-                                    });
-                                }
-                            });
-
-                            // Nota informativa
-                            col.Item().PaddingTop(12).Border(1).BorderColor(_reportStyle.ColorBordes).Padding(10).Column(note =>
+                            // Columna derecha: Totales
+                            row.RelativeItem(1).Column(totalsCol =>
                             {
-                                note.Item().Text("ℹ Información de precios").Bold().FontSize(8).FontColor(_reportStyle.ColorPrincipal);
-                                note.Item().PaddingTop(4);
-                                note.Item().Text("• Te cuesta c/u: Precio al que te entregamos cada producto").FontSize(7).FontColor(_reportStyle.ColorTextoSecundario);
-                                note.Item().Text("• Precio sugerido: Precio recomendado de venta al público").FontSize(7).FontColor(_reportStyle.ColorTextoSecundario);
+                                totalsCol.Item().Row(totalRow =>
+                                {
+                                    totalRow.RelativeItem().Text("TOTAL A PAGAR:")
+                                        .Bold().FontSize(11).FontColor(_reportStyle.ColorPrincipal);
+                                    totalRow.AutoItem().Text($"${sale.Total:N0}")
+                                        .Bold().FontSize(11).FontColor(_reportStyle.ColorPrincipal);
+                                });
+
+                                totalsCol.Item().PaddingTop(3).Row(paymentRow =>
+                                {
+                                    paymentRow.RelativeItem().Text("Método de pago:")
+                                        .FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
+                                    paymentRow.AutoItem().Text(sale.PaymentMethodEntity?.Code == "CASH"
+                                        ? "Contado" : "Crédito")
+                                        .FontSize(8).FontColor(_reportStyle.ColorTextoSecundario);
+                                });
                             });
                         });
                     });
