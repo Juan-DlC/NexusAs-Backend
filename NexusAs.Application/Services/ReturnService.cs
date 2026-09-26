@@ -23,16 +23,14 @@ namespace NexusAs.Application.Services
         public async Task<PagedResponseDto<ReturnDto>> GetAllAsync(
             int pageNumber, int pageSize, DateTime? from = null, DateTime? to = null)
         {
-            var returns = await _unitOfWork.Returns.FindAsync(r =>
-                r.IsActive &&
-                (from == null || r.Date >= from) &&
-                (to == null || r.Date <= to));
+            var returns = await _unitOfWork.Returns.GetAllWithDetailsAsync(from, to);
 
             var totalRecords = returns.Count();
             var paged = returns
                 .OrderByDescending(r => r.Date)
                 .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize);
+                .Take(pageSize)
+                .ToList();
 
             return new PagedResponseDto<ReturnDto>
             {
@@ -104,10 +102,10 @@ namespace NexusAs.Application.Services
 
         public async Task<IEnumerable<ReturnDto>> GetBySaleIdAsync(int saleId)
         {
-            var returns = await _unitOfWork.Returns.FindAsync(r =>
-                r.SaleId == saleId && r.IsActive);
-
-            return _mapper.Map<IEnumerable<ReturnDto>>(returns.OrderByDescending(r => r.Date));
+            var allReturns = await _unitOfWork.Returns.GetAllWithDetailsAsync();
+            var returns = allReturns.Where(r => r.SaleId == saleId).OrderByDescending(r => r.Date);
+            
+            return _mapper.Map<IEnumerable<ReturnDto>>(returns);
         }
 
         // ═══════════════════════════════════════════════════════════════════════

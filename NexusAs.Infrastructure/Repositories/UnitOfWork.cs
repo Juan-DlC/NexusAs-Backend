@@ -59,7 +59,7 @@ namespace NexusAs.Infrastructure.Repositories
             _partnerLiquidations ??= new BaseRepository<PartnerLiquidation>(_context);
         private IRepository<CreditInstallment>? _creditInstallments;
         private IRepository<CreditPayment>? _creditPayments;
-        private IRepository<Return>? _returns;
+        private IReturnRepository? _returns;
         private IRepository<ReturnDetail>? _returnDetails;
         private IBusinessPartnerRepository? _businessPartners;
         private IRepository<BusinessPartnerLiquidation>? _businessPartnerLiquidations;
@@ -72,8 +72,8 @@ namespace NexusAs.Infrastructure.Repositories
         public IRepository<CreditPayment> CreditPayments =>
             _creditPayments ??= new BaseRepository<CreditPayment>(_context);
 
-        public IRepository<Return> Returns =>
-            _returns ??= new BaseRepository<Return>(_context);
+        public IReturnRepository Returns =>
+            _returns ??= new ReturnRepository(_context);
 
         public IRepository<ReturnDetail> ReturnDetails =>
             _returnDetails ??= new BaseRepository<ReturnDetail>(_context);

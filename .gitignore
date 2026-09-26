@@ -482,3 +482,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+
+Server=tcp:nexusas-db-server.database.windows.net,1433;Initial Catalog=NexusAsDB;Persist Security Info=False;User ID=sqlasdb;Password=S3ve3rus@98**;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
