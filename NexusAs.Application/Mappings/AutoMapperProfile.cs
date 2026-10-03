@@ -100,7 +100,10 @@ namespace NexusAs.Application.Mappings
                                 ? src.Product.Code : string.Empty))
                         .ForMember(dest => dest.ProductName,
                             opt => opt.MapFrom(src => src.Product != null
-                                ? src.Product.Name : string.Empty));
+                                ? src.Product.Name : string.Empty))
+                        .ForMember(dest => dest.ProductDescription,
+                            opt => opt.MapFrom(src => src.Product != null
+                                ? src.Product.Description : null));
 
             CreateMap<User, UserDto>()
                 .ForMember(dest => dest.Role,
