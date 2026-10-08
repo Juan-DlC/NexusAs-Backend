@@ -68,7 +68,8 @@ namespace NexusAs.Infrastructure.Repositories
             {
                 query = query.Where(c =>
                     (c.Sale != null && c.Sale.SaleNumber.Contains(search)) ||
-                    (c.Customer != null && c.Customer.Name.Contains(search)));
+                    (c.Customer != null && c.Customer.Name.Contains(search)) ||
+                    (c.Customer != null && c.Customer.Notes != null && c.Customer.Notes.Contains(search)));
             }
 
             var totalRecords = await query.CountAsync();
