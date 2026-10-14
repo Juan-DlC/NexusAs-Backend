@@ -20,11 +20,14 @@ namespace NexusAs.Application.Services
         }
 
         public async Task<PagedResponseDto<CreditDto>> GetAllAsync(
-            string? status = null, string? search = null,
-            int pageNumber = 1, int pageSize = 10)
+            int pageNumber, int pageSize,
+            string? search = null,
+            string? status = null,
+            int userId = 0,
+            string userRole = "Admin")
         {
             var (credits, totalRecords) = await _unitOfWork.Credits.GetAllPagedAsync(
-                status, search, pageNumber, pageSize);
+                pageNumber, pageSize, search, status, userId, userRole);
 
             var dtos = _mapper.Map<IEnumerable<CreditDto>>(credits);
 
@@ -90,11 +93,19 @@ namespace NexusAs.Application.Services
             return dto;
         }
 
-        public async Task<CreditDto> RegisterPaymentAsync(int creditId, PaymentDto dto, int userId)
+        public async Task<CreditDto> RegisterPaymentAsync(int creditId, PaymentDto dto, int userId, string userRole = "Admin")
         {
             var credit = await _unitOfWork.Credits.GetByIdFullDetailsAsync(creditId);
             if (credit == null)
                 throw new NotFoundException("Credit", creditId);
+            
+            // TAREA 4: Validar que el Partner solo pueda abonar a sus propios créditos
+            if (userRole == "Partner")
+            {
+                if (credit.Sale?.UserId != userId)
+                    throw new BusinessException("No está autorizado para abonar a este crédito.");
+            }
+            
             if (credit.Status == CreditStatus.Paid)
                 throw new BusinessException("Este crédito ya está pagado.");
             if (dto.Amount <= 0)

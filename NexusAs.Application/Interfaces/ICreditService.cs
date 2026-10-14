@@ -6,10 +6,13 @@ namespace NexusAs.Application.Interfaces
     public interface ICreditService
     {
         Task<PagedResponseDto<CreditDto>> GetAllAsync(
-            string? status = null, string? search = null,
-            int pageNumber = 1, int pageSize = 10);
+            int pageNumber, int pageSize,
+            string? search = null,
+            string? status = null,
+            int userId = 0,
+            string userRole = "Admin");
         Task<CreditDto?> GetByIdAsync(int id);
-        Task<CreditDto> RegisterPaymentAsync(int creditId, PaymentDto dto, int userId);
+        Task<CreditDto> RegisterPaymentAsync(int creditId, PaymentDto dto, int userId, string userRole = "Admin");
         Task<CreditDetailDto> GetFullDetailsAsync(int id);
     }
 }

@@ -112,6 +112,16 @@ namespace NexusAs.Application.Services
                 throw new BusinessException($"El usuario con Id {finalUserId} no existe en el sistema. Verifique que la socia esté correctamente registrada.");
             }
 
+            // TAREA 3: Validar que un Partner no pueda hacerse pasar por otro
+            var currentUser = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (currentUser != null && currentUser.Role == UserRole.Partner)
+            {
+                if (dto.PartnerUserId.HasValue && dto.PartnerUserId.Value != userId)
+                {
+                    throw new BusinessException("No está autorizado para crear ventas en nombre de otro usuario.");
+                }
+            }
+
             // Validación explícita de PaymentMethodId ANTES de crear la venta
             if (dto.PaymentMethodId <= 0)
                 throw new BusinessException("Debe seleccionar un método de pago válido.");

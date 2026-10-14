@@ -47,7 +47,11 @@ namespace NexusAs.Infrastructure.Repositories
         }
 
         public async Task<(IEnumerable<Credit> Items, int TotalRecords)> GetAllPagedAsync(
-     string? status, string? search, int pageNumber, int pageSize)
+            int pageNumber, int pageSize,
+            string? search = null,
+            string? status = null,
+            int userId = 0,
+            string userRole = "Admin")
         {
             NexusAs.Domain.Enums.CreditStatus? statusEnum = null;
             if (!string.IsNullOrEmpty(status) &&
@@ -70,6 +74,12 @@ namespace NexusAs.Infrastructure.Repositories
                     (c.Sale != null && c.Sale.SaleNumber.Contains(search)) ||
                     (c.Customer != null && c.Customer.Name.Contains(search)) ||
                     (c.Customer != null && c.Customer.Notes != null && c.Customer.Notes.Contains(search)));
+            }
+
+            // TAREA 2: Filtrar créditos por Partner - Solo ve sus propios créditos
+            if (userRole == "Partner" && userId > 0)
+            {
+                query = query.Where(c => c.Sale != null && c.Sale.UserId == userId);
             }
 
             var totalRecords = await query.CountAsync();

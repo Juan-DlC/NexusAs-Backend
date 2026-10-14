@@ -1,4 +1,5 @@
 ﻿using NexusAs.Domain.Entities;
+using NexusAs.Domain.Enums;
 
 namespace NexusAs.Application.Interfaces
 {
@@ -8,6 +9,10 @@ namespace NexusAs.Application.Interfaces
         Task<Credit?> GetByIdWithDetailsAsync(int id);
         Task<Credit?> GetByIdFullDetailsAsync(int id);
         Task<(IEnumerable<Credit> Items, int TotalRecords)> GetAllPagedAsync(
-          string? status, string? search, int pageNumber, int pageSize);  
+            int pageNumber, int pageSize,
+            string? search = null,
+            string? status = null,
+            int userId = 0,
+            string userRole = "Admin");
     }
 }

@@ -52,7 +52,7 @@ namespace NexusAs.Api.Controllers
         /// Crea una nueva devolución (procesa automáticamente stock, créditos y ganancias de socias)
         /// </summary>
         [HttpPost]
-        [Authorize(Roles = "Admin,Seller")]
+        [Authorize(Roles = "Admin,Seller,Partner")]
         public async Task<IActionResult> Create([FromBody] CreateReturnDto dto)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
