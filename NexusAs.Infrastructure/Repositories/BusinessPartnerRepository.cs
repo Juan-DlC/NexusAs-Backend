@@ -61,7 +61,7 @@ namespace NexusAs.Infrastructure.Repositories
         {
 #pragma warning disable CS8602 // Dereference of a possibly null reference - garantizado por WHERE filter
             // BUG FIX: Incluir Credit y PaymentMethodEntity para determinar si está pagada
-            return await _context.SaleDetails
+            var saleDetails = await _context.SaleDetails
                 .Include(sd => sd.Sale)
                     .ThenInclude(s => s.User)
                 .Include(sd => sd.Sale)
@@ -78,6 +78,8 @@ namespace NexusAs.Infrastructure.Repositories
                     sd.Sale.Date <= toDate &&
                     sd.Sale.IsActive &&
                     sd.IsActive &&
+                    // EXCLUIR ventas completamente devueltas (FullReturn)
+                    sd.Sale.Status != Domain.Enums.SaleStatus.FullReturn &&
                     // BUG FIX: La venta está completamente pagada si:
                     // - No tiene crédito (es contado) O
                     // - Tiene crédito y está pagado
@@ -88,6 +90,34 @@ namespace NexusAs.Infrastructure.Repositories
                                    bpld.Liquidation!.BusinessPartnerId == businessPartnerId && 
                                    bpld.Liquidation.IsActive))
                 .ToListAsync();
+
+            // Para ventas con PartialReturn, calcular cantidad neta (vendida - devuelta)
+            var saleDetailsWithNetQuantity = new List<SaleDetail>();
+
+            foreach (var saleDetail in saleDetails)
+            {
+                // Calcular total devuelto de este producto en esta venta
+                var totalReturned = await _context.ReturnDetails
+                    .Where(rd =>
+                        rd.Return!.SaleId == saleDetail.SaleId &&
+                        rd.ProductId == saleDetail.ProductId &&
+                        rd.Return.IsActive &&
+                        rd.IsActive)
+                    .SumAsync(rd => rd.Quantity);
+
+                // Cantidad neta = cantidad original - cantidad devuelta
+                var netQuantity = saleDetail.Quantity - totalReturned;
+
+                // Solo incluir si hay cantidad neta > 0
+                if (netQuantity > 0)
+                {
+                    // Ajustar la cantidad del SaleDetail a la cantidad neta
+                    saleDetail.Quantity = netQuantity;
+                    saleDetailsWithNetQuantity.Add(saleDetail);
+                }
+            }
+
+            return saleDetailsWithNetQuantity;
 #pragma warning restore CS8602
         }
 
